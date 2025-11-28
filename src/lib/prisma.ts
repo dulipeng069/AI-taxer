@@ -1,0 +1,9 @@
+import { PrismaClient } from '@prisma/client'
+import { PrismaD1 } from '@prisma/adapter-d1'
+import { D1Database } from '@cloudflare/workers-types'
+
+// Prevent multiple instances of Prisma Client in development
+export const getPrisma = (d1: D1Database) => {
+  const adapter = new PrismaD1(d1)
+  return new PrismaClient({ adapter })
+}

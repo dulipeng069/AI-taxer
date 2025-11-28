@@ -1,0 +1,39 @@
+{
+  "name": "copy-of-copy-of-copy-of-taxmaster-2025---continuous-labor-tax-saas",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:worker": "wrangler dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "db:generate": "prisma generate --schema=schema.d1.prisma",
+    "db:migrate": "wrangler d1 migrations apply taxmaster-db --local",
+    "db:migrate:prod": "wrangler d1 migrations apply taxmaster-db --remote",
+    "deploy:worker": "wrangler deploy",
+    "deploy:pages": "vite build && wrangler pages deploy dist"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "hono": "^4.10.7",
+    "lucide-react": "^0.555.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "xlsx": "latest"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251128.0",
+    "@prisma/adapter-d1": "^7.0.1",
+    "@prisma/client": "^7.0.1",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.0.0",
+    "prisma": "^7.0.1",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "wrangler": "^4.51.0"
+  }
+}

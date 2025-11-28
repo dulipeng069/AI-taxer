@@ -1,0 +1,128 @@
+// This is a suggested Prisma Schema for TaxMaster 2025 (Cloudflare D1 Version)
+// Technology Stack: Cloudflare Workers + D1 (SQLite) + Prisma ORM
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ==========================================
+// 1. User & Authentication (SaaS Multi-tenancy)
+// ==========================================
+
+// SQLite doesn't support native Enums, so we use Strings
+// UserRole: 'SUPER_ADMIN', 'ENTERPRISE_ADMIN'
+// AccountStatus: 'ACTIVE', 'DISABLED', 'SUSPENDED'
+
+model User {
+  id            String        @id @default(uuid())
+  username      String        @unique // Login ID
+  passwordHash  String        // Encrypted password
+  role          String        @default("ENTERPRISE_ADMIN") // Simulated Enum
+  status        String        @default("ACTIVE") // Simulated Enum
+  
+  // Enterprise Profile
+  companyName   String?
+  avatarUrl     String?
+  
+  // Permissions (Stored as String in SQLite, parsed as JSON in app)
+  permissions   String?       @default("[]") 
+
+  // Relations
+  employees     Employee[]
+  taxRecords    TaxRecord[]
+  uploadBatches UploadBatch[]
+  auditLogs     AuditLog[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([username])
+}
+
+// ==========================================
+// 2. Core Business Data
+// ==========================================
+
+model Employee {
+  id          String   @id @default(uuid())
+  enterpriseId String
+  
+  name        String
+  idNumber    String
+  phone       String?
+  department  String?
+
+  enterprise  User        @relation(fields: [enterpriseId], references: [id])
+  taxRecords  TaxRecord[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([enterpriseId, idNumber]) 
+  @@index([idNumber])
+}
+
+model TaxRecord {
+  id              String   @id @default(uuid())
+  enterpriseId    String
+  employeeId      String
+  batchId         String?
+
+  period          String   // YYYY-MM
+  paymentDate     DateTime
+
+  // Note: SQLite doesn't have native Decimal. 
+  // Prisma handles this, but usually stores as high-precision text or double.
+  // For finance, prefer storing as String or Integer (cents) if accessing via raw SQL.
+  // Here we let Prisma handle the Decimal type mapping.
+  income          Decimal
+  
+  taxableIncome   Decimal
+  taxRate         Decimal
+  quickDeduction  Decimal
+  taxPayable      Decimal
+  taxPaid         Decimal
+  currentTax      Decimal
+  afterTaxIncome  Decimal
+
+  isNewSegment    Boolean  @default(false)
+
+  enterprise      User        @relation(fields: [enterpriseId], references: [id])
+  employee        Employee    @relation(fields: [employeeId], references: [id])
+  batch           UploadBatch? @relation(fields: [batchId], references: [id])
+
+  createdAt       DateTime @default(now())
+
+  @@index([enterpriseId, period])
+  @@index([employeeId])
+}
+
+model UploadBatch {
+  id            String   @id @default(uuid())
+  enterpriseId  String
+  fileName      String
+  totalRecords  Int
+  totalAmount   Decimal
+  uploadTime    DateTime @default(now())
+  
+  status        String   // 'SUCCESS', 'PROCESSING', 'FAILED'
+
+  enterprise    User        @relation(fields: [enterpriseId], references: [id])
+  records       TaxRecord[]
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  action      String
+  details     String?  // JSON stringified
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+}

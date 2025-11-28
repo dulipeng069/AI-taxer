@@ -1,0 +1,147 @@
+// This is a suggested Prisma Schema for TaxMaster 2025
+// Technology Stack Recommendation: PostgreSQL + Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 1. User & Authentication (SaaS Multi-tenancy)
+// ==========================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ENTERPRISE_ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  DISABLED
+  SUSPENDED
+}
+
+model User {
+  id            String        @id @default(uuid())
+  username      String        @unique // Login ID
+  passwordHash  String        // Encrypted password (bcrypt/argon2)
+  role          UserRole      @default(ENTERPRISE_ADMIN)
+  status        AccountStatus @default(ACTIVE)
+  
+  // Enterprise Profile (Nullable if Super Admin)
+  companyName   String?
+  avatarUrl     String?
+  
+  // Permissions (JSON for flexibility: ['calculation', 'reports'])
+  permissions   Json?         @default("[]")
+
+  // Relations
+  employees     Employee[]
+  taxRecords    TaxRecord[]
+  uploadBatches UploadBatch[]
+  auditLogs     AuditLog[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([username])
+}
+
+// ==========================================
+// 2. Core Business Data: Personnel & Records
+// ==========================================
+
+// Employee/Personnel Profile
+// Normalized: One person can have multiple income records
+model Employee {
+  id          String   @id @default(uuid())
+  enterpriseId String // Multi-tenancy isolation
+  
+  name        String
+  idNumber    String   // Identity Card (Critical for tax calculation)
+  phone       String?
+  department  String?
+
+  // Relations
+  enterprise  User        @relation(fields: [enterpriseId], references: [id])
+  taxRecords  TaxRecord[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Constraint: One ID Number per Enterprise
+  @@unique([enterpriseId, idNumber]) 
+  @@index([idNumber])
+}
+
+// The core ledger: Monthly Income Records
+model TaxRecord {
+  id              String   @id @default(uuid())
+  enterpriseId    String
+  employeeId      String
+  batchId         String?  // Trace back to which Excel upload
+
+  // Basic Info
+  period          String   // YYYY-MM (e.g., "2025-01")
+  paymentDate     DateTime // Actual payment date
+
+  // Financials (Use Decimal for currency, never Float)
+  income          Decimal  @db.Decimal(12, 2) // Pre-tax income
+  
+  // Calculation Results (Stored for history/audit)
+  // Why store results? Because tax rules might change, but history shouldn't.
+  taxableIncome   Decimal  @db.Decimal(12, 2) // 应纳税所得额
+  taxRate         Decimal  @db.Decimal(4, 2)  // 预扣率 (e.g., 0.03)
+  quickDeduction  Decimal  @db.Decimal(10, 2) // 速算扣除数
+  taxPayable      Decimal  @db.Decimal(12, 2) // 应纳税额
+  taxPaid         Decimal  @db.Decimal(12, 2) // 已缴纳
+  currentTax      Decimal  @db.Decimal(12, 2) // 本期应扣
+  afterTaxIncome  Decimal  @db.Decimal(12, 2) // 实发
+
+  // Logic Flags
+  isNewSegment    Boolean  @default(false) // Whether this started a new tax cycle
+
+  // Relations
+  enterprise      User        @relation(fields: [enterpriseId], references: [id])
+  employee        Employee    @relation(fields: [employeeId], references: [id])
+  batch           UploadBatch? @relation(fields: [batchId], references: [id])
+
+  createdAt       DateTime @default(now())
+
+  @@index([enterpriseId, period])
+  @@index([employeeId])
+}
+
+// Track Excel Uploads
+model UploadBatch {
+  id            String   @id @default(uuid())
+  enterpriseId  String
+  fileName      String
+  totalRecords  Int
+  totalAmount   Decimal  @db.Decimal(15, 2)
+  uploadTime    DateTime @default(now())
+  
+  status        String   // 'SUCCESS', 'PROCESSING', 'FAILED'
+
+  enterprise    User        @relation(fields: [enterpriseId], references: [id])
+  records       TaxRecord[]
+}
+
+// ==========================================
+// 3. System & Audit
+// ==========================================
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  action      String   // e.g., "LOGIN", "EXPORT_REPORT", "DELETE_EMPLOYEE"
+  details     Json?    // Context data
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+}

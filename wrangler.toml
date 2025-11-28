@@ -1,0 +1,9 @@
+name = "taxmaster-saas"
+main = "src/worker.ts"
+compatibility_date = "2024-04-05"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "taxmaster-db"
+database_id = "aa743df7-6374-4161-afa2-5dfce11be11c"
