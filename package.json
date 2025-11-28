@@ -12,7 +12,7 @@
     "db:migrate": "wrangler d1 migrations apply taxmaster-db --local",
     "db:migrate:prod": "wrangler d1 migrations apply taxmaster-db --remote",
     "deploy:worker": "wrangler deploy",
-    "deploy:pages": "vite build && wrangler pages deploy dist"
+    "deploy:pages": "vite build && wrangler pages deploy dist --project-name taxmaster-frontend"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
