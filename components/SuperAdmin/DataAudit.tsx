@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { RawInput, EnterpriseAccount } from '../../types';
 import { authService } from '../../services/authService';
-import { FileSpreadsheet, Building2, Calendar, Eye } from 'lucide-react';
+import { taxService } from '../../services/taxService';
+import { FileSpreadsheet, Building2, Calendar, Eye, Loader2 } from 'lucide-react';
 import { processTaxRecords } from '../../services/taxCalculator';
 
 interface DataAuditProps {
@@ -9,8 +10,24 @@ interface DataAuditProps {
 }
 
 const DataAudit: React.FC<DataAuditProps> = ({ onViewData }) => {
-  const inputs = authService.getAllInputs();
+  const [inputs, setInputs] = useState<RawInput[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const enterprises = authService.getEnterprises();
+
+  useEffect(() => {
+    const fetchAllData = async () => {
+      try {
+        setIsLoading(true);
+        const data = await taxService.getRecords();
+        setInputs(data);
+      } catch (error) {
+        console.error('Failed to fetch audit data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAllData();
+  }, []);
 
   // Aggregate data by batch and company
   const batchStats = useMemo(() => {
@@ -56,6 +73,15 @@ const DataAudit: React.FC<DataAuditProps> = ({ onViewData }) => {
     
     return Array.from(stats.values()).sort((a, b) => b.batchId.localeCompare(a.batchId));
   }, [inputs, enterprises]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        <span className="ml-2 text-slate-600">加载数据中...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

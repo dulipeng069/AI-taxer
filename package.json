@@ -12,10 +12,14 @@
     "db:migrate": "wrangler d1 migrations apply taxmaster-db --local",
     "db:migrate:prod": "wrangler d1 migrations apply taxmaster-db --remote",
     "deploy:worker": "wrangler deploy",
-    "deploy:pages": "vite build && wrangler pages deploy dist --project-name taxmaster-frontend"
+    "deploy:pages": "vite build && wrangler pages deploy dist --project-name taxmaster-frontend",
+    "build:server": "esbuild src/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist-server/index.cjs --external:better-sqlite3 --external:mysql2 --external:pg",
+    "start": "node dist-server/index.cjs"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.6",
     "bcryptjs": "^3.0.3",
+    "dotenv": "^16.6.1",
     "hono": "^4.10.7",
     "lucide-react": "^0.555.0",
     "react": "^19.2.0",
@@ -24,14 +28,14 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251128.0",
-    "@prisma/adapter-d1": "^7.0.1",
-    "@prisma/client": "^7.0.1",
+    "@prisma/adapter-d1": "^6.0.0",
+    "@prisma/client": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
-    "prisma": "^7.0.1",
+    "prisma": "^6.0.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "wrangler": "^4.51.0"

@@ -27,6 +27,8 @@ model User {
   
   // Enterprise Profile
   companyName   String?
+  contactPerson String?
+  contactPhone  String?
   avatarUrl     String?
   
   // Permissions (Stored as String in SQLite, parsed as JSON in app)

@@ -21,11 +21,11 @@ const INITIAL_ENTERPRISES: EnterpriseAccount[] = [
 
 // Super Admin Credentials (hardcoded for now)
 const SUPER_ADMIN = {
-  username: 'admin',
-  password: 'admin123'
+  username: 'dulipeng',
+  password: 'dlp389757'
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8789';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export const authService = {
   // Login Logic
@@ -58,7 +58,7 @@ export const authService = {
         throw new Error('Login failed');
       }
 
-      const data = await response.json();
+      const data = await response.json() as { status?: string, data?: any };
       
       if (data.status === 'ok' && data.data) {
           const user = data.data;
@@ -87,6 +87,23 @@ export const authService = {
   getCurrentUser: (): UserSession | null => {
     const stored = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
     return stored ? JSON.parse(stored) : null;
+  },
+
+  changePassword: async (passwordData: { username: string, oldPassword: string, newPassword: string }) => {
+    const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(passwordData)
+    });
+
+    if (!response.ok) {
+      const data = await response.json() as { error?: string };
+      throw new Error(data.error || 'Failed to change password');
+    }
+    
+    return await response.json();
   },
 
   // Enterprise Management (Super Admin)

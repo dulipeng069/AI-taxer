@@ -8,7 +8,7 @@ const app = new Hono<{ Bindings: { DB: D1Database } }>()
 app.post('/login', async (c) => {
   try {
     const { username, password } = await c.req.json()
-    const prisma = getPrisma(c.env.DB)
+    const prisma = getPrisma(c)
 
     const user = await prisma.user.findUnique({
       where: { username }
@@ -43,7 +43,7 @@ app.post('/register', async (c) => {
         return c.json({ error: 'Username and password are required' }, 400)
     }
 
-    const prisma = getPrisma(c.env.DB)
+    const prisma = getPrisma(c)
     const hashedPassword = bcrypt.hashSync(password, 10)
 
     const user = await prisma.user.create({
@@ -68,6 +68,35 @@ app.post('/register', async (c) => {
     if (e.code === 'P2002') {
         return c.json({ error: 'Username already exists' }, 400)
     }
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+app.post('/change-password', async (c) => {
+  try {
+    const { username, oldPassword, newPassword } = await c.req.json()
+    
+    if (!username || !oldPassword || !newPassword) {
+      return c.json({ error: 'Username, old password and new password are required' }, 400)
+    }
+
+    const prisma = getPrisma(c.env.DB)
+    const user = await prisma.user.findUnique({
+      where: { username }
+    })
+
+    if (!user || !bcrypt.compareSync(oldPassword, user.passwordHash)) {
+      return c.json({ error: 'Invalid old password' }, 401)
+    }
+
+    const hashedPassword = bcrypt.hashSync(newPassword, 10)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: hashedPassword }
+    })
+
+    return c.json({ status: 'ok', message: 'Password changed successfully' })
+  } catch (e: any) {
     return c.json({ error: e.message }, 500)
   }
 })

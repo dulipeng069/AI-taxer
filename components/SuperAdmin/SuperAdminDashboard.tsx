@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, LogOut, FileText, Menu, X, Bell } from 'lucide-react';
-import { authService } from '../../services/authService';
-import { EnterpriseAccount, RawInput } from '../../types';
+import React, { useState } from 'react';
+import { LogOut, FileText, Menu, X, Bell, Users } from 'lucide-react';
+import { RawInput } from '../../types';
 import Dashboard from '../Dashboard';
-import EnterpriseManager from './EnterpriseManager';
 import DataAudit from './DataAudit';
+import UserManagement from './UserManagement';
+import { User } from '../../services/userService';
 
 interface SuperAdminDashboardProps {
   onLogout: () => void;
@@ -12,34 +12,27 @@ interface SuperAdminDashboardProps {
 }
 
 const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, allInputs }) => {
-  const [activeTab, setActiveTab] = useState<'enterprises' | 'audit'>('enterprises');
-  const [viewingCompanyId, setViewingCompanyId] = useState<string | null>(null);
-  const [enterprises, setEnterprises] = useState<EnterpriseAccount[]>([]);
+  const [activeTab, setActiveTab] = useState<'users' | 'audit'>('users');
+  const [viewingCompany, setViewingCompany] = useState<{ id: string, name: string } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    setEnterprises(authService.getEnterprises());
-  }, []);
-
-  const handleViewData = (entOrId: EnterpriseAccount | string) => {
-    const id = typeof entOrId === 'string' ? entOrId : entOrId.id;
-    setViewingCompanyId(id);
+  const handleViewData = (user: User) => {
+    setViewingCompany({ id: user.id, name: user.companyName || 'Unknown Company' });
   };
 
   // If viewing a specific company's data
-  if (viewingCompanyId) {
-    const viewingEnt = enterprises.find(e => e.id === viewingCompanyId);
-    const companyInputs = allInputs.filter(i => i.companyId === viewingCompanyId);
+  if (viewingCompany) {
+    const companyInputs = allInputs.filter(i => i.companyId === viewingCompany.id);
     
     return (
       <div className="relative h-screen">
         <div className="fixed top-0 left-0 right-0 h-10 bg-slate-900 z-50 flex items-center justify-between px-4 text-xs text-white shadow-md">
            <div className="flex items-center gap-2">
              <span className="bg-yellow-500 text-black px-1.5 py-0.5 rounded font-bold">超管视图</span>
-             <span>正在查看企业：<strong className="text-yellow-400">{viewingEnt?.companyName}</strong></span>
+             <span>正在查看企业：<strong className="text-yellow-400">{viewingCompany.name}</strong></span>
            </div>
            <button 
-             onClick={() => setViewingCompanyId(null)}
+             onClick={() => setViewingCompany(null)}
              className="bg-white/10 hover:bg-white/20 px-3 py-1 rounded transition-colors"
            >
              退出查看
@@ -48,10 +41,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
         <div className="pt-10 h-full">
            <Dashboard 
              onLogout={() => {}} 
-             companyId={viewingCompanyId}
+             companyId={viewingCompany.id}
              userRole="super_admin"
-             inputs={companyInputs}
-             onUpdateInputs={() => {}} 
              readOnly={true} 
            />
         </div>
@@ -60,7 +51,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
   }
 
   const menuItems = [
-    { id: 'enterprises', label: '企业管理', icon: LayoutDashboard },
+    { id: 'users', label: '账号管理', icon: Users },
     { id: 'audit', label: '数据审计', icon: FileText },
   ];
 
@@ -98,7 +89,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
               <button
                 key={item.id}
                 onClick={() => {
-                  setActiveTab(item.id as 'enterprises' | 'audit');
+                  setActiveTab(item.id as any);
                   setSidebarOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all
@@ -156,10 +147,16 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
 
         {/* Content Area */}
         <main className="flex-1 overflow-auto p-4 lg:p-8 bg-slate-100">
-          {activeTab === 'enterprises' ? (
-            <EnterpriseManager onViewData={handleViewData} />
+          {activeTab === 'users' ? (
+            <UserManagement onViewData={handleViewData} />
           ) : (
-            <DataAudit onViewData={handleViewData} />
+            <DataAudit onViewData={(id) => {
+               // DataAudit might still pass string ID, let's handle it if needed.
+               // Actually DataAudit passes string ID in previous code.
+               // We need to fetch user name if we want to display it.
+               // For now, let's just use 'Unknown Company' or pass empty name.
+               setViewingCompany({ id, name: '企业数据' });
+            }} />
           )}
         </main>
       </div>

@@ -123,8 +123,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
             </button>
             
             <div className="text-center text-xs text-slate-400 mt-4">
-               演示账号：admin / admin123 (超管) <br/>
-               企业账号：admin_xinghe / password123
+               {/* Demo info removed */}
             </div>
           </form>
         </div>

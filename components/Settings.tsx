@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { UserSettings } from '../types';
-import { Building2, User, Save, Camera } from 'lucide-react';
+import { Building2, User, Save, Camera, Lock } from 'lucide-react';
+import { authService } from '../services/authService';
 
 interface SettingsProps {
   settings: UserSettings;
@@ -10,9 +11,44 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, readOnly }) => {
+  const [passwordForm, setPasswordForm] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
   const handleChange = (key: keyof UserSettings, value: string) => {
     if (readOnly) return;
     onUpdate({ ...settings, [key]: value });
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setMessage({ type: 'error', text: '两次输入的新密码不一致' });
+      return;
+    }
+
+    try {
+      // Get current user info for username
+      const session = authService.getCurrentUser();
+      if (!session) {
+        setMessage({ type: 'error', text: '未登录' });
+        return;
+      }
+
+      await authService.changePassword({
+        username: session.username,
+        oldPassword: passwordForm.oldPassword,
+        newPassword: passwordForm.newPassword
+      });
+
+      setMessage({ type: 'success', text: '密码修改成功' });
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message });
+    }
   };
 
   return (
@@ -116,6 +152,73 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, readOnly }) => 
          )}
 
       </div>
+
+      {/* Password Change Section */}
+      {!readOnly && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+           <div className="mb-6">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                 <Lock size={20} className="text-brand-600" />
+                 修改密码
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">定期修改密码可以保护您的账号安全</p>
+           </div>
+
+           <form onSubmit={handlePasswordChange} className="space-y-6 max-w-2xl">
+              {message && (
+                <div className={`p-4 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  {message.text}
+                </div>
+              )}
+              
+              <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">当前密码</label>
+                  <input 
+                      type="password" 
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
+                      value={passwordForm.oldPassword}
+                      onChange={e => setPasswordForm({...passwordForm, oldPassword: e.target.value})}
+                      placeholder="请输入当前使用的密码"
+                  />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">新密码</label>
+                      <input 
+                          type="password" 
+                          required
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
+                          value={passwordForm.newPassword}
+                          onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                          placeholder="请输入新密码"
+                      />
+                  </div>
+                  <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">确认新密码</label>
+                      <input 
+                          type="password" 
+                          required
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
+                          value={passwordForm.confirmPassword}
+                          onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+                          placeholder="请再次输入新密码"
+                      />
+                  </div>
+              </div>
+
+              <div className="pt-4 flex justify-end">
+                  <button 
+                    type="submit"
+                    className="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                  >
+                    确认修改密码
+                  </button>
+              </div>
+           </form>
+        </div>
+      )}
     </div>
   );
 };

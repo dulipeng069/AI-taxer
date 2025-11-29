@@ -1,0 +1,99 @@
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8789';
+
+export interface User {
+  id: string;
+  username: string;
+  role: 'SUPER_ADMIN' | 'ENTERPRISE_ADMIN';
+  companyName?: string;
+  status: string;
+  createdAt: string;
+}
+
+export const userService = {
+  // Get all users (Super Admin)
+  getUsers: async (): Promise<User[]> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users`);
+      if (!response.ok) throw new Error('Failed to fetch users');
+      const data = await response.json() as { data: User[] };
+      return data.data;
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      throw error;
+    }
+  },
+
+  // Create user (Super Admin)
+  createUser: async (userData: { username: string; password: string; role: string; companyName?: string }) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+      if (!response.ok) {
+        const error = await response.json() as { error?: string };
+        throw new Error(error.error || 'Failed to create user');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
+    }
+  },
+
+  // Update user (Super Admin)
+  updateUser: async (id: string, userData: { companyName?: string; status?: string }) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+      if (!response.ok) {
+        const error = await response.json() as { error?: string };
+        throw new Error(error.error || 'Failed to update user');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
+    }
+  },
+
+  // Reset Password (Super Admin)
+  resetPassword: async (id: string, newPassword: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/${id}/password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword }),
+      });
+      if (!response.ok) {
+        const error = await response.json() as { error?: string };
+        throw new Error(error.error || 'Failed to reset password');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      throw error;
+    }
+  },
+
+  // Delete User (Super Admin)
+  deleteUser: async (id: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const error = await response.json() as { error?: string };
+        throw new Error(error.error || 'Failed to delete user');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      throw error;
+    }
+  }
+};

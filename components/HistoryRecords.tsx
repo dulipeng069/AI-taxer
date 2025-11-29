@@ -4,14 +4,17 @@ import { RawInput, CalculatedTaxRecord } from '../types';
 import { Trash2, FileSpreadsheet, Archive, Calendar } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
+import { taxService } from '../services/taxService';
+
 interface HistoryRecordsProps {
   inputs: RawInput[];
-  setInputs: (inputs: RawInput[]) => void;
+  companyId?: string;
+  onDataChange: () => void;
   calculatedData: CalculatedTaxRecord[];
   readOnly?: boolean;
 }
 
-const HistoryRecords: React.FC<HistoryRecordsProps> = ({ inputs, setInputs, calculatedData, readOnly }) => {
+const HistoryRecords: React.FC<HistoryRecordsProps> = ({ inputs, companyId, onDataChange, calculatedData, readOnly }) => {
   
   // Group by Batch ID
   const batchStats = useMemo(() => {
@@ -36,10 +39,21 @@ const HistoryRecords: React.FC<HistoryRecordsProps> = ({ inputs, setInputs, calc
       .sort((a, b) => b.id.localeCompare(a.id)); // Newest first
   }, [calculatedData]);
 
-  const handleDeleteBatch = (batchId: string) => {
+  const handleDeleteBatch = async (batchId: string) => {
     const count = inputs.filter((i: RawInput) => i.batchId === batchId).length;
     if (window.confirm(`确定要删除批次 [${batchId}] 的所有 ${count} 条数据吗？此操作不可恢复。`)) {
-      setInputs(inputs.filter((i: RawInput) => i.batchId !== batchId));
+      try {
+        if (companyId) {
+            await taxService.deleteBatch(batchId);
+            onDataChange();
+        } else {
+            // Fallback for local mode or error
+             alert("无法删除：企业ID缺失");
+        }
+      } catch (error) {
+        console.error("Delete batch error:", error);
+        alert("删除失败，请重试");
+      }
     }
   };
 

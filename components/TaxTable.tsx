@@ -1,18 +1,22 @@
 
-import React, { useRef } from 'react';
-import { Upload, Trash2, RefreshCw, FileDown, FileSpreadsheet, Wallet, PieChart, Users, ListFilter, Download } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Upload, RefreshCw, FileDown, FileSpreadsheet, Wallet, PieChart, Users, ListFilter, Download } from 'lucide-react';
 import { RawInput, CalculatedTaxRecord } from '../types';
+import { taxService } from '../services/taxService';
+import { processTaxRecords } from '../services/taxCalculator';
 import * as XLSX from 'xlsx';
 
 interface TaxTableProps {
   inputs: RawInput[];
-  setInputs: (inputs: RawInput[]) => void;
+  companyId?: string;
+  onDataChange: () => void;
   calculatedData: CalculatedTaxRecord[];
   readOnly?: boolean;
 }
 
-const TaxTable: React.FC<TaxTableProps> = ({ inputs, setInputs, calculatedData, readOnly = false }) => {
+const TaxTable: React.FC<TaxTableProps> = ({ inputs, companyId, onDataChange, calculatedData, readOnly = false }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Directly use calculatedData for display and stats
   const displayData = calculatedData;
@@ -23,15 +27,8 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, setInputs, calculatedData, 
   const totalTax = displayData.reduce((acc, curr) => acc + curr.currentTax, 0);
   const totalPeople = new Set(displayData.map(d => d.idNumber)).size;
 
-  const handleDeleteRecord = (id: string) => {
-    setInputs(inputs.filter(i => i.id !== id));
-  };
-
   const handleReset = () => {
-    if (inputs.length === 0) return;
-    if(window.confirm('确定要清空工作台所有数据吗？\n注意：这不会删除已保存的“历史记录”，但会清空当前计算视图。')) {
-      setInputs([]);
-    }
+    alert('数据已开启云端存储，请前往“历史记录”进行数据管理与删除。');
   };
 
   const handleImportClick = () => {
@@ -54,13 +51,20 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, setInputs, calculatedData, 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    if (!companyId) {
+        alert('企业ID缺失，无法上传数据');
+        return;
+    }
+
+    setIsUploading(true);
 
     // Generate Batch ID: YYYYMMDD-HHmmss
     const now = new Date();
     const batchId = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
         const arrayBuffer = evt.target?.result;
         const workbook = XLSX.read(arrayBuffer, { type: 'array' }); // Removed cellDates: true to handle raw serials manually
@@ -138,8 +142,9 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, setInputs, calculatedData, 
           }
 
           newRecords.push({
-            id: Math.random().toString(36).substr(2, 9),
-            companyId: '', // Will be set by service
+            id: Math.random().toString(36).slice(2, 11),
+            companyId: companyId, // Set company ID
+            enterpriseId: companyId,
             date: dateStr,
             name: String(name).trim(),
             idNumber: String(idNumber).trim(),
@@ -149,17 +154,43 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, setInputs, calculatedData, 
         });
 
         if (newRecords.length > 0) {
-          setInputs([...inputs, ...newRecords]);
-          alert(`成功导入批次 [${batchId}]，共 ${newRecords.length} 条数据！${skippedCount > 0 ? `(跳过 ${skippedCount} 条无效数据)` : ''}`);
+            // Calculate locally first to get full record data (tax, etc.)
+            // We must combine with existing inputs to get cumulative stats correct?
+            // Actually, `processTaxRecords` recalculates everything.
+            // If we upload a NEW batch, we need to calculate it in context of history?
+            // Yes, `processTaxRecords` sorts by date.
+            // But here we only have `newRecords`.
+            // If we send only `newRecords` to backend, and backend saves them.
+            // Does backend recalculate cumulative? 
+            // My backend implementation just saves what is sent.
+            // So frontend MUST calculate correctly before sending.
+            // To calculate correctly, we need ALL history + New Records.
+            
+            const combinedInputs = [...inputs, ...newRecords];
+            const allCalculated = processTaxRecords(combinedInputs);
+            
+            // Extract only the new records (now calculated)
+            // Be careful: `processTaxRecords` might change order.
+            // We filter by batchId.
+            const newCalculated = allCalculated.filter(r => r.batchId === batchId);
+            
+            // Upload
+            await taxService.uploadData(companyId, newCalculated, file.name);
+            
+            alert(`成功上传批次 [${batchId}]，共 ${newRecords.length} 条数据！${skippedCount > 0 ? `(跳过 ${skippedCount} 条无效数据)` : ''}`);
+            
+            // Refresh Data
+            onDataChange();
         } else {
           alert('未识别到有效数据。请确保Excel包含：姓名、身份证号、收入金额、支付日期');
         }
 
-      } catch (error) {
+      } catch (error: any) {
         console.error("Import Error:", error);
-        alert('文件解析失败，请检查文件格式。支持 .xlsx 或 .xls 格式');
+        alert(`上传失败: ${error.message}`);
       } finally {
         if (fileInputRef.current) fileInputRef.current.value = '';
+        setIsUploading(false);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -321,9 +352,10 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, setInputs, calculatedData, 
                   {!readOnly && (
                     <button 
                       onClick={handleImportClick} 
-                      className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white shadow-md shadow-brand-100 px-4 py-2 rounded-lg text-sm font-bold transition-all"
+                      disabled={isUploading}
+                      className={`flex items-center gap-2 bg-brand-600 text-white shadow-md shadow-brand-100 px-4 py-2 rounded-lg text-sm font-bold transition-all ${isUploading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-brand-700'}`}
                     >
-                      <Upload size={14}/> 导入 Excel
+                      <Upload size={14} className={isUploading ? 'animate-spin' : ''} /> {isUploading ? '上传中...' : '导入 Excel'}
                     </button>
                   )}
               </div>
@@ -336,7 +368,6 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, setInputs, calculatedData, 
             <table className="w-full text-sm text-left whitespace-nowrap">
               <thead className="bg-gray-50 text-gray-600 font-semibold sticky top-0 z-10 shadow-sm">
                 <tr>
-                  {!readOnly && <th className="px-4 py-3 border-b bg-gray-50">操作</th>}
                   <th className="px-4 py-3 border-b bg-gray-50 text-gray-400">批次号</th>
                   <th className="px-4 py-3 border-b bg-gray-50">支付日期</th>
                   <th className="px-4 py-3 border-b bg-gray-50">姓名</th>
@@ -355,11 +386,6 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, setInputs, calculatedData, 
               <tbody className="divide-y divide-gray-100">
                 {displayData.map((row) => (
                   <tr key={row.id} className={`hover:bg-gray-50 ${row.isNewSegment ? 'bg-slate-50/50 border-t border-slate-200' : ''}`}>
-                     {!readOnly && (
-                       <td className="px-4 py-2">
-                        <button onClick={() => handleDeleteRecord(row.id)} className="text-gray-300 hover:text-red-500 p-1 rounded hover:bg-red-50"><Trash2 size={14} /></button>
-                       </td>
-                     )}
                      <td className="px-4 py-2 text-xs text-gray-400 font-mono">{row.batchId}</td>
                      <td className="px-4 py-2">{row.date}</td>
                      <td className="px-4 py-2 font-medium">{row.name}</td>

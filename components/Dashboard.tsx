@@ -1,6 +1,6 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { LayoutDashboard, Users, Calculator, FileText, Settings as SettingsIcon, LogOut, Menu, X, Bell, History } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { LayoutDashboard, Users, Calculator, FileText, Settings as SettingsIcon, LogOut, Menu, X, Bell, History, Loader2 } from 'lucide-react';
 import TaxTable from './TaxTable';
 import Worktable from './Worktable';
 import PersonnelManager from './PersonnelManager';
@@ -10,13 +10,12 @@ import HistoryRecords from './HistoryRecords';
 import { RawInput, UserSettings } from '../types';
 import { processTaxRecords } from '../services/taxCalculator';
 import { authService } from '../services/authService';
+import { taxService } from '../services/taxService';
 
 interface DashboardProps {
   onLogout: () => void;
   companyId?: string;
   userRole?: string;
-  inputs: RawInput[];
-  onUpdateInputs: (inputs: RawInput[]) => void;
   readOnly?: boolean;
   permissions?: string[];
 }
@@ -33,8 +32,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   onLogout, 
   companyId, 
   userRole, 
-  inputs, 
-  onUpdateInputs, 
   readOnly = false,
   permissions 
 }) => {
@@ -42,7 +39,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [activeTab, setActiveTab] = useState('dashboard');
   
   // Data State
+  const [inputs, setInputs] = useState<RawInput[]>([]);
   const [settings, setSettings] = useState<UserSettings>(INITIAL_SETTINGS);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Load company info for settings header
   useEffect(() => {
@@ -59,14 +58,26 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   }, [companyId]);
 
-  // Wrapper for onUpdateInputs to handle function updates if necessary, though simpler to just pass direct updates
-  const handleSetInputs = (newInputs: RawInput[] | ((prev: RawInput[]) => RawInput[])) => {
-    if (typeof newInputs === 'function') {
-      onUpdateInputs(newInputs(inputs));
-    } else {
-      onUpdateInputs(newInputs);
+  // Fetch Data
+  const fetchData = useCallback(async () => {
+    if (!companyId) return;
+    
+    setIsLoading(true);
+    try {
+      const data = await taxService.getRecords(companyId);
+      setInputs(data);
+    } catch (error) {
+      console.error("Failed to fetch records:", error);
+      // Optionally show error toast
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [companyId]);
+
+  // Load data on mount or company change
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Computed State (Global)
   const calculatedData = useMemo(() => processTaxRecords(inputs), [inputs]);
@@ -85,9 +96,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const menuItems = useMemo(() => {
     if (!permissions || permissions.length === 0) return allMenuItems;
-    // Always show dashboard? Or is 'dashboard' a permission?
-    // Usually 'dashboard' is basic access.
-    // Let's assume 'dashboard' is always there.
     return allMenuItems.filter(item => 
       item.id === 'dashboard' || permissions.includes(item.id)
     );
@@ -98,9 +106,25 @@ const Dashboard: React.FC<DashboardProps> = ({
       case 'dashboard':
         return <Worktable data={calculatedData} onNavigate={setActiveTab} />;
       case 'calculation':
-        return <TaxTable inputs={inputs} setInputs={handleSetInputs} calculatedData={calculatedData} readOnly={isReadOnly} />;
+        return (
+          <TaxTable 
+            inputs={inputs} 
+            companyId={companyId}
+            onDataChange={fetchData}
+            calculatedData={calculatedData} 
+            readOnly={isReadOnly} 
+          />
+        );
       case 'history':
-        return <HistoryRecords inputs={inputs} setInputs={handleSetInputs} calculatedData={calculatedData} readOnly={isReadOnly} />;
+        return (
+          <HistoryRecords 
+            inputs={inputs} 
+            companyId={companyId}
+            onDataChange={fetchData}
+            calculatedData={calculatedData} 
+            readOnly={isReadOnly} 
+          />
+        );
       case 'personnel':
         return <PersonnelManager data={calculatedData} />;
       case 'reports':
@@ -205,7 +229,15 @@ const Dashboard: React.FC<DashboardProps> = ({
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-auto p-4 lg:p-8 bg-slate-100">
+        <main className="flex-1 overflow-auto p-4 lg:p-8 bg-slate-100 relative">
+          {isLoading && (
+            <div className="absolute inset-0 bg-white/50 z-50 flex items-center justify-center backdrop-blur-sm">
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
+                <p className="text-sm font-medium text-brand-700">数据加载中...</p>
+              </div>
+            </div>
+          )}
           {renderContent()}
         </main>
       </div>
