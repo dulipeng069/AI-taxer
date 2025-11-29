@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogOut, FileText, Menu, X, Bell, Users, Share2, Megaphone } from 'lucide-react';
+import { LogOut, FileText, Menu, X, Bell, Users, Share2, Megaphone, ChevronDown, ChevronRight, Layers } from 'lucide-react';
 import { RawInput } from '../../types';
 import Dashboard from '../Dashboard';
 import DataAudit from './DataAudit';
@@ -12,10 +12,18 @@ interface SuperAdminDashboardProps {
   allInputs: RawInput[];
 }
 
+interface MenuItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  children?: MenuItem[];
+}
+
 const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, allInputs }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'audit' | 'marketing'>('users');
   const [viewingCompany, setViewingCompany] = useState<{ id: string, name: string } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['operations']); // Default expand for visibility
 
   const handleViewData = (user: User) => {
     setViewingCompany({ id: user.id, name: user.companyName || 'Unknown Company' });
@@ -51,11 +59,24 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
     );
   }
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     { id: 'users', label: '账号管理', icon: Users },
     { id: 'audit', label: '数据审计', icon: FileText },
-    { id: 'marketing', label: '宣传物料', icon: Megaphone, category: '产品运营' },
+    { 
+      id: 'operations', 
+      label: '产品运营', 
+      icon: Layers,
+      children: [
+        { id: 'marketing', label: '宣传物料', icon: Megaphone }
+      ]
+    },
   ];
+
+  const toggleMenu = (id: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden font-sans text-slate-800">
@@ -84,94 +105,124 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
         </div>
 
         <nav className="p-4 space-y-1">
-          {menuItems.map((item, index) => {
+          {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
-            const showCategory = item.category && (index === 0 || menuItems[index - 1].category !== item.category);
+            const hasChildren = item.children && item.children.length > 0;
+            const isExpanded = expandedMenus.includes(item.id);
             
             return (
-              <React.Fragment key={item.id}>
-                {showCategory && (
-                  <div className="mt-4 mb-2 px-4 text-xs font-semibold text-blue-200 uppercase tracking-wider">
-                    {item.category}
-                  </div>
-                )}
+              <div key={item.id}>
                 <button
                   onClick={() => {
-                    setActiveTab(item.id as any);
-                    setSidebarOpen(false);
+                    if (hasChildren) {
+                      toggleMenu(item.id);
+                    } else {
+                      setActiveTab(item.id as any);
+                      setSidebarOpen(false);
+                    }
                   }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all
-                    ${isActive 
-                      ? 'bg-white text-blue-600 shadow-md' 
-                      : 'text-blue-100 hover:bg-blue-500/50 hover:text-white'
-                    }`}
+                  className={`
+                    w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group
+                    ${isActive && !hasChildren
+                      ? 'bg-white text-blue-600 shadow-md translate-x-1' 
+                      : 'text-blue-100 hover:bg-blue-500/50 hover:text-white'}
+                  `}
                 >
-                  <Icon size={20} className={isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'} />
-                  {item.label}
+                  <div className="flex items-center gap-3">
+                    <Icon size={20} className={isActive && !hasChildren ? 'text-blue-600' : 'text-blue-300 group-hover:text-white'} />
+                    <span>{item.label}</span>
+                  </div>
+                  {hasChildren && (
+                    isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />
+                  )}
                 </button>
-              </React.Fragment>
+
+                {/* Submenu */}
+                {hasChildren && isExpanded && (
+                  <div className="mt-1 ml-4 space-y-1 border-l border-blue-400/30 pl-2">
+                    {item.children!.map((child) => {
+                      const ChildIcon = child.icon;
+                      const isChildActive = activeTab === child.id;
+                      
+                      return (
+                        <button
+                          key={child.id}
+                          onClick={() => {
+                            setActiveTab(child.id as any);
+                            setSidebarOpen(false);
+                          }}
+                          className={`
+                            w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
+                            ${isChildActive 
+                              ? 'bg-white/10 text-white' 
+                              : 'text-blue-200 hover:text-white hover:bg-blue-500/30'}
+                          `}
+                        >
+                          <ChildIcon size={18} />
+                          <span>{child.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
 
-        <div className="absolute bottom-0 w-full p-4 border-t border-blue-500/30">
-          <button 
+        {/* User Profile */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-blue-500/30 bg-blue-800/20 backdrop-blur-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 flex items-center justify-center text-white font-bold shadow-lg">
+              SA
+            </div>
+            <div>
+              <div className="font-medium text-white">Super Admin</div>
+              <div className="text-xs text-blue-200">System Controller</div>
+            </div>
+          </div>
+          <button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-blue-200 hover:text-white hover:bg-blue-500/50 rounded-lg transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors border border-white/10"
           >
-            <LogOut size={20} />
-            退出登录
+            <LogOut size={16} />
+            <span>退出登录</span>
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b border-slate-200 h-16 flex items-center justify-between px-6 lg:px-8">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-500 mr-4">
-            <Menu size={24} />
-          </button>
-          
-          <h1 className="text-lg font-semibold text-slate-900">
-             {menuItems.find(m => m.id === activeTab)?.label}
-          </h1>
-
-          <div className="flex items-center gap-6">
-            <button className="relative p-1 text-slate-400 hover:text-slate-500">
-              <Bell size={20} />
-              <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
-            </button>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                SA
-              </div>
-              <div className="hidden md:block text-sm">
-                <p className="font-medium text-slate-700">Super Admin</p>
-                <p className="text-slate-500 text-xs">系统管理员</p>
-              </div>
-            </div>
+      <main className="flex-1 overflow-auto bg-slate-50 relative">
+        <header className="bg-white h-16 border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center gap-4">
+             <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-500 hover:text-blue-600">
+               <Menu size={24} />
+             </button>
+             <h2 className="text-xl font-bold text-slate-800">
+               {activeTab === 'users' ? '企业账号管理' : 
+                activeTab === 'audit' ? '数据审计中心' : 
+                activeTab === 'marketing' ? '产品运营中心' : 'Dashboard'}
+             </h2>
+          </div>
+          <div className="flex items-center gap-4">
+             <button className="p-2 text-slate-400 hover:bg-slate-100 rounded-full relative">
+               <Bell size={20} />
+               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+             </button>
           </div>
         </header>
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-auto p-4 lg:p-8 bg-slate-100">
+        <div className="p-8 max-w-7xl mx-auto">
           {activeTab === 'users' ? (
             <UserManagement onViewData={handleViewData} />
           ) : activeTab === 'marketing' ? (
             <MarketingMaterials />
           ) : (
-            <DataAudit onViewData={(id) => {
-               // DataAudit might still pass string ID, let's handle it if needed.
-               // Actually DataAudit passes string ID in previous code.
-               // We need to fetch user name if we want to display it.
-               // For now, let's just use 'Unknown Company' or pass empty name.
-               setViewingCompany({ id, name: '企业数据' });
-            }} />
+            <DataAudit onViewData={(id) => setViewingCompany({ id, name: '企业数据' })} />
           )}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };
