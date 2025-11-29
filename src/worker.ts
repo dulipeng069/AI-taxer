@@ -24,7 +24,7 @@ app.delete('/api/tax/batch/:id', taxController.deleteBatch)
 
 // Health Check
 app.get('/api/health', (c) => {
-  return c.json({ status: 'ok', message: 'TaxMaster API is running' })
+  return c.json({ status: 'ok', message: 'TaxMaster API Health Check OK' })
 })
 
 export default app
