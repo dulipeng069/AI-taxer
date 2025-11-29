@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { LogOut, FileText, Menu, X, Bell, Users } from 'lucide-react';
+import { LogOut, FileText, Menu, X, Bell, Users, Share2, Megaphone } from 'lucide-react';
 import { RawInput } from '../../types';
 import Dashboard from '../Dashboard';
 import DataAudit from './DataAudit';
 import UserManagement from './UserManagement';
+import MarketingMaterials from './ProductOperations/MarketingMaterials';
 import { User } from '../../services/userService';
 
 interface SuperAdminDashboardProps {
@@ -12,7 +13,7 @@ interface SuperAdminDashboardProps {
 }
 
 const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, allInputs }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'audit'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'audit' | 'marketing'>('users');
   const [viewingCompany, setViewingCompany] = useState<{ id: string, name: string } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -53,6 +54,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
   const menuItems = [
     { id: 'users', label: '账号管理', icon: Users },
     { id: 'audit', label: '数据审计', icon: FileText },
+    { id: 'marketing', label: '宣传物料', icon: Megaphone, category: '产品运营' },
   ];
 
   return (
@@ -82,25 +84,33 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
         </div>
 
         <nav className="p-4 space-y-1">
-          {menuItems.map((item) => {
+          {menuItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
+            const showCategory = item.category && (index === 0 || menuItems[index - 1].category !== item.category);
+            
             return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id as any);
-                  setSidebarOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all
-                  ${isActive 
-                    ? 'bg-white text-blue-600 shadow-md' 
-                    : 'text-blue-100 hover:bg-blue-500/50 hover:text-white'
-                  }`}
-              >
-                <Icon size={20} className={isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'} />
-                {item.label}
-              </button>
+              <React.Fragment key={item.id}>
+                {showCategory && (
+                  <div className="mt-4 mb-2 px-4 text-xs font-semibold text-blue-200 uppercase tracking-wider">
+                    {item.category}
+                  </div>
+                )}
+                <button
+                  onClick={() => {
+                    setActiveTab(item.id as any);
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all
+                    ${isActive 
+                      ? 'bg-white text-blue-600 shadow-md' 
+                      : 'text-blue-100 hover:bg-blue-500/50 hover:text-white'
+                    }`}
+                >
+                  <Icon size={20} className={isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'} />
+                  {item.label}
+                </button>
+              </React.Fragment>
             );
           })}
         </nav>
@@ -149,6 +159,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
         <main className="flex-1 overflow-auto p-4 lg:p-8 bg-slate-100">
           {activeTab === 'users' ? (
             <UserManagement onViewData={handleViewData} />
+          ) : activeTab === 'marketing' ? (
+            <MarketingMaterials />
           ) : (
             <DataAudit onViewData={(id) => {
                // DataAudit might still pass string ID, let's handle it if needed.
