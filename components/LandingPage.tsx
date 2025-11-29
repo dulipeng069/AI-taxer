@@ -445,18 +445,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToPolicy }
                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">1</div>
                        <div>
                           <h4 className="font-bold text-slate-900">计税方式重大变革</h4>
-                          <p className="text-sm text-slate-600 mt-1">废止原劳务报酬 20%-40% 三级税率，启用 <strong>3%-45% 七级超额累进税率</strong>。</p>
+                          <p className="text-sm text-slate-600 mt-1">针对互联网平台从业人员新增 <strong>3%-45% 七级超额累进税率</strong>，传统劳务报酬仍沿用 20%-40% 三级税率。</p>
                        </div>
                     </li>
                     <li className="flex gap-4">
                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">2</div>
-                       <div>
-                          <h4 className="font-bold text-slate-900">引入“累计预扣法”</h4>
-                          <p className="text-sm text-slate-600 mt-1">废止原劳务报酬 20%-40% 三级税率，启用 <strong>3%-45% 七级超额累进税率</strong>。</p>
-                       </div>
-                    </li>
-                    <li className="flex gap-4">
-                       <div className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center font-bold text-sm">2</div>
                        <div>
                           <h4 className="font-bold text-slate-900">引入“累计预扣法”</h4>
                           <p className="text-sm text-slate-600 mt-1">
