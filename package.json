@@ -22,6 +22,7 @@
     "dotenv": "^16.6.1",
     "hono": "^4.10.7",
     "lucide-react": "^0.555.0",
+    "mysql2": "^3.15.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "xlsx": "latest"
@@ -29,12 +30,13 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251128.0",
     "@prisma/adapter-d1": "^6.0.0",
-    "@prisma/client": "^6.0.0",
+    "@prisma/client": "^6.19.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
+    "esbuild": "^0.27.0",
     "prisma": "^6.0.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
