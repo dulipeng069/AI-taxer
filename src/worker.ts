@@ -23,7 +23,7 @@ app.get('/api/tax/records', taxController.getRecords)
 app.delete('/api/tax/batch/:id', taxController.deleteBatch)
 
 // Health Check
-app.get('/', (c) => {
+app.get('/api/health', (c) => {
   return c.json({ status: 'ok', message: 'TaxMaster API is running' })
 })
 
