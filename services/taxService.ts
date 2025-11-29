@@ -1,7 +1,12 @@
 
 import { RawInput, CalculatedTaxRecord } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+let API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
+// Safety override: Ensure we never connect to Cloudflare from the deployed instance
+if (API_BASE_URL.includes('workers.dev') || API_BASE_URL.includes('ai-taxer.com')) {
+  API_BASE_URL = '';
+}
 
 export const taxService = {
   // Upload a batch of data

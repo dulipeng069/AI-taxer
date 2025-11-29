@@ -25,7 +25,14 @@ const SUPER_ADMIN = {
   password: 'dlp389757'
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+let API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
+// Safety override: Ensure we never connect to Cloudflare from the deployed instance
+// unless explicitly intended. This prevents data leakage between environments.
+if (API_BASE_URL.includes('workers.dev') || API_BASE_URL.includes('ai-taxer.com')) {
+  console.warn('Build configuration error: Cloudflare URL detected. Forcing local API usage.');
+  API_BASE_URL = '';
+}
 
 export const authService = {
   // Login Logic

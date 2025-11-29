@@ -1,4 +1,15 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8789';
+let API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// If not explicitly set, default to empty string (relative path) for production
+// This fixes the issue where it defaults to localhost:8789 when VITE_API_BASE_URL is empty
+if (!API_BASE_URL) {
+  API_BASE_URL = '';
+}
+
+// Safety override: Ensure we never connect to Cloudflare from the deployed instance
+if (API_BASE_URL.includes('workers.dev') || API_BASE_URL.includes('ai-taxer.com')) {
+  API_BASE_URL = '';
+}
 
 export interface User {
   id: string;
