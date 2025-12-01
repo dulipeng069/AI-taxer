@@ -6,8 +6,10 @@ export interface RawInput {
   date: string; // YYYY-MM-DD
   name: string;
   idNumber: string; // Identity Card
+  employeeCode?: string; // User ID Code
   income: number;
   batchId?: string; // Upload Batch ID
+  isPostTax?: boolean; // If true, income is treated as Post-tax and will be converted to Pre-tax
 }
 
 export type Enterprise = EnterpriseAccount; // Alias for consistency
@@ -34,6 +36,9 @@ export interface UserSession {
   role: 'super_admin' | 'enterprise_admin';
   companyId?: string; // If enterprise_admin
   companyName?: string;
+  companyCode?: string; // Enterprise Code
+  permissions?: string[];
+  validUntil?: string;
 }
 
 export interface CalculatedTaxRecord extends RawInput {
@@ -58,6 +63,7 @@ export interface TaxRateRule {
 
 export interface UserSettings {
   companyName: string;
+  companyCode?: string; // Enterprise Code
   userName: string;
   userRole: string;
   avatarUrl: string;

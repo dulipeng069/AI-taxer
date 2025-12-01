@@ -103,10 +103,13 @@ const App: React.FC = () => {
           <Dashboard 
             onLogout={handleLogout} 
             companyId={userSession.companyId}
+            companyName={userSession.companyName}
+            companyCode={userSession.companyCode}
+            userName={userSession.username}
             userRole={userSession.role}
-            inputs={myInputs}
-            onUpdateInputs={(inputs) => handleUpdateCompanyInputs(userSession.companyId!, inputs)}
-            permissions={ent?.permissions}
+            // inputs={myInputs} // Removed as Dashboard fetches its own data now
+            permissions={userSession.permissions || ent?.permissions}
+            validUntil={userSession.validUntil}
           />
         );
       }

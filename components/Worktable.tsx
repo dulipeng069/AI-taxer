@@ -38,19 +38,7 @@ const Worktable: React.FC<WorktableProps> = ({ data, onNavigate }) => {
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">工作台</h2>
-          <p className="text-gray-500 text-sm mt-1">欢迎回来，今日个税合规指数 <span className="text-emerald-600 font-bold">100%</span></p>
-        </div>
-        <div className="flex items-center gap-3">
-           <span className="text-sm text-gray-500 bg-white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm flex items-center gap-2">
-              <ShieldCheck size={14} className="text-brand-600"/>
-              已启用 2025 新规算法引擎
-           </span>
-        </div>
-      </div>
+      {/* Header Section Removed - Moved to Dashboard Layout */}
 
       {/* Quick Actions Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

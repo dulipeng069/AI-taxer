@@ -16,32 +16,44 @@ export const taxService = {
     // We'll take the batchId from the first record if available, or generate one.
     const batchId = records.length > 0 ? records[0].batchId : `BATCH-${Date.now()}`;
 
-    const response = await fetch(`${API_BASE_URL}/api/tax/upload`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        enterpriseId: companyId,
-        batchId,
-        fileName,
-        records: records.map(r => ({
-            ...r,
-            // Ensure numbers are numbers
-            income: Number(r.income),
-            currentTax: Number(r.currentTax),
-            afterTaxIncome: Number(r.afterTaxIncome),
-            // ... other fields
-        }))
-      })
-    });
+    // Chunking logic to support "unlimited" uploads
+    // We split the upload into smaller chunks to avoid backend timeouts and memory limits
+    const CHUNK_SIZE = 200; 
+    const totalChunks = Math.ceil(records.length / CHUNK_SIZE);
+    let lastResponse: any = { status: 'ok', batchId };
 
-    if (!response.ok) {
-      const errorData = await response.json() as { error?: string };
-      throw new Error(errorData.error || 'Failed to upload data');
+    for (let i = 0; i < totalChunks; i++) {
+        const chunk = records.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        
+        const response = await fetch(`${API_BASE_URL}/api/tax/upload`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            enterpriseId: companyId,
+            batchId,
+            fileName,
+            records: chunk.map(r => ({
+                ...r,
+                // Ensure numbers are numbers
+                income: Number(r.income),
+                currentTax: Number(r.currentTax),
+                afterTaxIncome: Number(r.afterTaxIncome),
+                // ... other fields
+            }))
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json() as { error?: string };
+          throw new Error(errorData.error || `Failed to upload chunk ${i + 1}/${totalChunks}`);
+        }
+        
+        lastResponse = await response.json();
     }
 
-    return await response.json();
+    return lastResponse;
   },
 
   // Get all records for a company (or all if no companyId provided)

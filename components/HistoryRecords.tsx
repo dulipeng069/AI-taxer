@@ -66,6 +66,7 @@ const HistoryRecords: React.FC<HistoryRecordsProps> = ({ inputs, companyId, onDa
       '支付日期': item.date,
       '姓名': item.name,
       '身份证号': item.idNumber,
+      '用户编码': item.employeeCode || '-',
       '收入金额': item.income,
       '支付月份': item.paymentMonth,
       '连续月份': item.continuousMonthsCount,
@@ -87,10 +88,7 @@ const HistoryRecords: React.FC<HistoryRecordsProps> = ({ inputs, companyId, onDa
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">历史记录管理</h2>
-        <p className="text-gray-500 text-sm mt-1">查看及管理所有上传的计算批次</p>
-      </div>
+
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">

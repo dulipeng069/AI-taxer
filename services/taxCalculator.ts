@@ -30,10 +30,79 @@ const getTaxRateAndDeduction = (taxableIncome: number): { rate: number; deductio
 };
 
 /**
+ * Reverse Calculate Pre-tax Income from Post-tax Income.
+ * 
+ * X = Pre-tax Income (unknown)
+ * Y = Post-tax Income (input)
+ * P = Prior Cumulative Pre-tax Income
+ * T_prev = Prior Tax Paid
+ * M = Continuous Months
+ * 
+ * We solve for X.
+ */
+const calculatePreTaxFromPostTax = (
+  postTaxIncome: number,
+  priorCumulativeIncome: number,
+  priorTaxPaid: number,
+  continuousMonths: number
+): number => {
+  // 1. Try Case: Current Tax == 0
+  // If Tax == 0, then X = Y.
+  // Check if Tax(X) <= T_prev.
+  const checkZeroTaxX = postTaxIncome;
+  const checkZeroTaxI = calculateTaxableIncome(priorCumulativeIncome + checkZeroTaxX, continuousMonths);
+  const { rate: r0, deduction: d0 } = getTaxRateAndDeduction(checkZeroTaxI);
+  const totalTax0 = (checkZeroTaxI * r0) - d0;
+  
+  // If calculated total tax is less than or equal to what was already paid, then no new tax is needed.
+  // So Pre-tax = Post-tax.
+  if (totalTax0 <= priorTaxPaid + 0.001) { 
+      return postTaxIncome;
+  }
+
+  // 2. Iterate Brackets to find X
+  for (const rule of TAX_RATES) {
+      const r = rule.rate;
+      const d = rule.deduction;
+      
+      // Formula derived:
+      // Y = X - (TotalTax - T_prev)
+      // TotalTax = ( (P+X)*0.8 - M*5000 ) * r - d
+      // Y = X - ( (0.8*P + 0.8*X - 5000*M)*r - d - T_prev )
+      // Y = X - ( 0.8*r*P + 0.8*r*X - 5000*M*r - d - T_prev )
+      // Y = X*(1 - 0.8*r) - (0.8*r*P - 5000*M*r - d - T_prev)
+      // X*(1 - 0.8*r) = Y + (0.8*r*P - 5000*M*r - d - T_prev)
+      
+      const constantPart = (0.8 * r * priorCumulativeIncome) - (5000 * continuousMonths * r) - d - priorTaxPaid;
+      const numerator = postTaxIncome + constantPart;
+      const denominator = 1 - (0.8 * r);
+      
+      if (denominator <= 0) continue;
+      
+      const calculatedX = numerator / denominator;
+      
+      // Validation:
+      // Calculate Taxable Income with this X
+      const calculatedI = calculateTaxableIncome(priorCumulativeIncome + calculatedX, continuousMonths);
+      
+      // Check if this Taxable Income falls into the current bracket (rule)
+      const { rate: checkRate } = getTaxRateAndDeduction(calculatedI);
+      
+      // Check if rates match (using small epsilon)
+      if (Math.abs(checkRate - r) < 0.0001) {
+           return calculatedX;
+      }
+  }
+  
+  // Fallback: return postTax (should not happen if logic is complete)
+  return postTaxIncome;
+};
+
+/**
  * Helper to get Month difference between two YYYY-MM-DD strings
  */
 const getMonthDiff = (d1: Date, d2: Date) => {
-  let months;
+  let months: number;
   months = (d2.getFullYear() - d1.getFullYear()) * 12;
   months -= d1.getMonth();
   months += d2.getMonth();
@@ -105,7 +174,19 @@ export const processTaxRecords = (inputs: RawInput[]): CalculatedTaxRecord[] => 
     }
 
     // Accumulate Income (Fix floating point errors by toFixed(2))
-    segmentCumulativeIncome = Number((segmentCumulativeIncome + Number(record.income)).toFixed(2));
+    let currentIncome = Number(record.income);
+
+    // Handle Post-tax -> Pre-tax Conversion if flag is set
+    if (record.isPostTax) {
+        currentIncome = calculatePreTaxFromPostTax(
+            currentIncome, 
+            segmentCumulativeIncome, 
+            segmentPriorTaxPaid, 
+            continuousMonthsCount
+        );
+    }
+
+    segmentCumulativeIncome = Number((segmentCumulativeIncome + currentIncome).toFixed(2));
 
     // Calculate Taxable Income for the Segment using New Policy Logic
     const segmentTaxableIncome = calculateTaxableIncome(segmentCumulativeIncome, continuousMonthsCount);
@@ -130,6 +211,7 @@ export const processTaxRecords = (inputs: RawInput[]): CalculatedTaxRecord[] => 
 
     results.push({
       ...record,
+      income: Number(currentIncome.toFixed(2)),
       paymentMonth: monthStr,
       continuousMonthsCount,
       segmentCumulativeIncome,
@@ -139,7 +221,7 @@ export const processTaxRecords = (inputs: RawInput[]): CalculatedTaxRecord[] => 
       segmentTotalTax: Number(segmentTotalTax.toFixed(2)),
       segmentPriorTaxPaid: Number((segmentPriorTaxPaid - currentTax).toFixed(2)), // Prior tax *before* this payment
       currentTax: Number(currentTax.toFixed(2)),
-      afterTaxIncome: Number((record.income - currentTax).toFixed(2)),
+      afterTaxIncome: Number((currentIncome - currentTax).toFixed(2)),
       isNewSegment: isNewSegment || (results.length === 0) || (results[results.length-1].idNumber !== record.idNumber)
     });
   });

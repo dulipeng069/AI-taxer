@@ -1,0 +1,141 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 1. User & Authentication (SaaS Multi-tenancy)
+// ==========================================
+
+model User {
+  id            String        @id @default(uuid())
+  username      String        @unique
+  passwordHash  String
+  role          String        @default("ENTERPRISE_ADMIN")
+  status        String        @default("ACTIVE")
+  
+  // Enterprise Profile
+  companyName   String?
+  companyCode   String?       @unique
+  contactPerson String?
+  contactPhone  String?
+  avatarUrl     String?       @db.Text
+
+  // Application Fields
+  realName      String?
+  phone         String?
+  subscription  String?       @default("FREE")
+  validUntil    DateTime?
+  
+  // Permissions
+  permissions   String?       @default("[]") @db.Text
+
+  // Relations
+  employees     Employee[]
+  taxRecords    TaxRecord[]
+  uploadBatches UploadBatch[]
+  auditLogs     AuditLog[]
+  notifications Notification[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([username])
+}
+
+// ==========================================
+// 2. Core Business Data
+// ==========================================
+
+model Employee {
+  id          String   @id @default(uuid())
+  enterpriseId String
+  
+  name        String
+  idNumber    String
+  code        String?
+  phone       String?
+  department  String?
+
+  enterprise  User        @relation(fields: [enterpriseId], references: [id])
+  taxRecords  TaxRecord[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([enterpriseId, idNumber]) 
+  @@index([idNumber])
+}
+
+model TaxRecord {
+  id              String   @id @default(uuid())
+  enterpriseId    String
+  employeeId      String
+  batchId         String?
+
+  period          String   // YYYY-MM
+  paymentDate     DateTime
+
+  income          Decimal  @db.Decimal(15, 2)
+  
+  taxableIncome   Decimal  @db.Decimal(15, 2)
+  taxRate         Decimal  @db.Decimal(5, 4) // e.g. 0.0300
+  quickDeduction  Decimal  @db.Decimal(15, 2)
+  taxPayable      Decimal  @db.Decimal(15, 2)
+  taxPaid         Decimal  @db.Decimal(15, 2)
+  currentTax      Decimal  @db.Decimal(15, 2)
+  afterTaxIncome  Decimal  @db.Decimal(15, 2)
+
+  isNewSegment    Boolean  @default(false)
+
+  enterprise      User        @relation(fields: [enterpriseId], references: [id])
+  employee        Employee    @relation(fields: [employeeId], references: [id])
+  batch           UploadBatch? @relation(fields: [batchId], references: [id])
+
+  createdAt       DateTime @default(now())
+
+  @@index([enterpriseId, period])
+  @@index([employeeId])
+}
+
+model UploadBatch {
+  id            String   @id @default(uuid())
+  enterpriseId  String
+  fileName      String
+  totalRecords  Int
+  totalAmount   Decimal  @db.Decimal(15, 2)
+  uploadTime    DateTime @default(now())
+  
+  status        String   // 'SUCCESS', 'PROCESSING', 'FAILED'
+
+  enterprise    User        @relation(fields: [enterpriseId], references: [id])
+  records       TaxRecord[]
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  action      String
+  details     String?  @db.Text
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String?  // Null means global
+  type        String   @default("SYSTEM")
+  title       String
+  content     String   @db.Text
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id])
+}

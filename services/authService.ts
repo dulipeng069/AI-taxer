@@ -62,7 +62,8 @@ export const authService = {
         if (response.status === 401) {
             return null;
         }
-        throw new Error('Login failed');
+        const errorData = await response.json() as { error?: string };
+        throw new Error(errorData.error || 'Login failed');
       }
 
       const data = await response.json() as { status?: string, data?: any };
@@ -74,7 +75,10 @@ export const authService = {
             username: user.username,
             role: user.role === 'ENTERPRISE_ADMIN' ? 'enterprise_admin' : 'super_admin', // Map role
             companyId: user.id, // Using user ID as company ID for now since one user per company
-            companyName: user.companyName
+            companyName: user.companyName,
+            companyCode: user.companyCode, // Map company code
+            permissions: user.permissions ? JSON.parse(user.permissions) : [],
+            validUntil: user.validUntil
           };
           localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(session));
           return session;

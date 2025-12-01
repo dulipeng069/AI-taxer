@@ -1,175 +1,127 @@
-# TaxMaster 阿里云部署指南 (Docker 版)
+# TaxMaster 阿里云部署指南
 
-本指南将指导您如何在阿里云 ECS 服务器上安装 Docker 并部署 TaxMaster 系统。
+本指南将帮助您在阿里云 ECS 服务器上快速部署 TaxMaster 系统。
 
-## 1. 准备工作
-
-- **购买 ECS 实例**：
-    - 推荐操作系统：**Ubuntu 22.04/20.04 LTS** 或 **Alibaba Cloud Linux 3** (兼容 CentOS)。
-    - 推荐配置：至少 2核 4G 内存（构建镜像时需要一定内存）。
-    - **安全组配置**：确保入方向允许 **80** (HTTP) 或您自定义的端口 (如 **3000**)。
-
-## 2. 安装 Docker 环境
-
-### 方案 A：Ubuntu 系统 (推荐)
-
-1.  **更新软件包索引**：
-    ```bash
-    sudo apt-get update
-    ```
-
-2.  **安装必要依赖**：
-    ```bash
-    sudo apt-get install ca-certificates curl gnupg
-    ```
-
-3.  **添加 Docker 官方 GPG 密钥**：
-    ```bash
-    sudo install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    sudo chmod a+r /etc/apt/keyrings/docker.gpg
-    ```
-
-4.  **设置仓库**：
-    ```bash
-    echo \
-      "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-      "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    ```
-
-5.  **安装 Docker Engine**：
-    ```bash
-    sudo apt-get update
-    sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
-    ```
-
-6.  **验证安装**：
-    ```bash
-    sudo docker --version
-    sudo docker compose version
-    ```
+## 部署架构
+- **前端**: React (Vite 构建为静态资源)
+- **后端**: Node.js (Hono 框架)
+- **数据库**: MySQL (推荐阿里云 RDS MySQL 版)
+- **反向代理**: Nginx (可选，用于域名访问和 HTTPS)
 
 ---
 
-### 方案 B：Alibaba Cloud Linux 3 / CentOS 7+
+## 方法一：一键脚本部署 (推荐)
 
-1.  **安装必要的工具**：
-    ```bash
-    sudo yum install -y yum-utils
-    ```
+适用于 Ubuntu 20.04/22.04 或 Alibaba Cloud Linux 3 / CentOS 7+。
 
-2.  **添加阿里云 Docker 镜像源** (国内服务器推荐，速度快)：
-    ```bash
-    sudo yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-    ```
+### 步骤 1: 准备资源
+1.  **购买 ECS 实例**: 
+    *   建议配置: 2核 4G 内存 (最低 1核 2G)
+    *   操作系统: Ubuntu 22.04 LTS (推荐) 或 Alibaba Cloud Linux 3
+    *   **安全组**: 开放 TCP 端口 80 (HTTP), 443 (HTTPS), 22 (SSH)
+2.  **准备数据库**:
+    *   购买 **RDS MySQL** 实例 (推荐 MySQL 8.0)
+    *   或者在 ECS 上自行安装 MySQL
+    *   创建一个数据库，例如 `taxmaster_db`
+    *   获取连接字符串: `mysql://用户名:密码@主机地址:3306/数据库名`
 
-3.  **安装 Docker**：
-    ```bash
-    sudo yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-    ```
-
-4.  **启动 Docker 并设置开机自启**：
-    ```bash
-    sudo systemctl start docker
-    sudo systemctl enable docker
-    ```
-
-5.  **验证安装**：
-    ```bash
-    sudo docker --version
-    sudo docker compose version
-    ```
-
----
-
-## 3. 部署 TaxMaster 应用
-
-### 步骤 1：上传代码
-
-您可以通过 `git` 或 `scp` 上传代码到服务器。
-
-**方式一：使用 Git (推荐)**
-如果您的代码托管在 GitHub/GitLab：
+### 步骤 2: 上传代码
+使用 Git 或 SFTP 将代码上传到服务器。
 ```bash
-git clone <您的仓库地址>
-cd taxmaster-2025
+# 示例: 使用 git clone
+git clone <你的仓库地址>
+cd aitaxmaster
 ```
 
-**方式二：直接上传**
-在本地项目目录下运行：
+### 步骤 3: 配置环境变量
+复制示例配置并编辑：
 ```bash
-# 假设服务器 IP 为 1.2.3.4，用户为 root
-scp -r . root@1.2.3.4:/root/taxmaster
+cp .env .env.production
+nano .env.production
 ```
-
-### 步骤 2：配置环境变量
-
-进入项目目录，创建 `.env` 文件：
-
-```bash
-cd /root/taxmaster # 或者是您的项目路径
-cp .env.example .env # 如果没有 .env.example，直接创建
-nano .env
-```
-
-在 `.env` 文件中填入以下内容（如果使用 Docker 内置数据库，可直接使用默认值）：
-
+**必须修改**以下内容：
 ```env
-# 数据库连接 URL
-# 如果使用 Docker Compose 启动的内置 MySQL，保持如下：
-DATABASE_URL="mysql://root:taxmaster_root_password@db:3306/taxmaster"
-
-# 如果使用阿里云 RDS，请修改为：
-# DATABASE_URL="mysql://用户名:密码@rm-xxx.mysql.rds.aliyuncs.com:3306/taxmaster"
-
-# 服务端口
+DATABASE_URL="mysql://admin:YourPassword@rm-xxx.mysql.rds.aliyuncs.com:3306/taxmaster_db"
 PORT=3000
-
-# 前端 API 地址 (生产环境通常为空，使用相对路径)
-VITE_API_BASE_URL=""
+JWT_SECRET="设置一个复杂的随机字符串"
 ```
 
-### 步骤 3：启动服务
-
-使用 Docker Compose 一键启动：
-
+### 步骤 4: 运行部署脚本
+赋予脚本执行权限并运行：
 ```bash
-# -d 表示后台运行，--build 表示重新构建镜像
-sudo docker compose up -d --build
+chmod +x setup_aliyun.sh
+./setup_aliyun.sh
+```
+脚本将自动执行以下操作：
+- 安装 Node.js v20, PM2, Nginx
+- 安装项目依赖
+- 构建前端和后端
+- (可选) 自动配置 Nginx 反向代理
+- (可选) 执行数据库迁移
+- 使用 PM2 启动服务
+
+### 步骤 5: 访问验证
+- 直接访问服务器 IP (如果安装了 Nginx): `http://<服务器公网IP>`
+- 查看服务状态: `pm2 status`
+- 查看日志: `pm2 logs`
+
+---
+
+## 方法二：Docker 容器部署
+
+如果您熟悉 Docker，这是最干净的部署方式。
+
+### 步骤 1: 安装 Docker
+在服务器上安装 Docker 和 Docker Compose。
+
+### 步骤 2: 配置环境
+创建 `.env` 文件并填入数据库连接信息 (同上)。
+
+### 步骤 3: 构建并运行
+```bash
+# 构建镜像
+docker build -t taxmaster:latest .
+
+# 运行容器
+docker run -d \
+  --name taxmaster \
+  -p 80:3000 \
+  --env-file .env \
+  taxmaster:latest
 ```
 
-### 步骤 4：验证部署
+---
 
-1.  **查看容器状态**：
-    ```bash
-    sudo docker compose ps
-    ```
-    状态应为 `Up`。
+## 常见问题排查
 
-2.  **查看日志**：
-    ```bash
-    sudo docker compose logs -f app
-    ```
-    如果看到 `Server is running on port 3000`，说明启动成功。
+### 1. 数据库连接失败
+- 检查 ECS 安全组是否允许出方向访问 RDS。
+- 检查 RDS 白名单是否包含 ECS 的内网 IP。
+- 确认 `DATABASE_URL` 格式正确。
 
-3.  **访问应用**：
-    在浏览器输入：`http://<服务器公网IP>:3000`
+### 2. 502 Bad Gateway (Nginx)
+- 确认后端服务是否运行: `pm2 status`
+- 检查端口监听: `netstat -tuln | grep 3000`
+- 检查 Nginx 错误日志: `cat /var/log/nginx/error.log`
 
-    *注意：如果无法访问，请检查阿里云 ECS 控制台的**安全组**，确保已放行 3000 端口。*
+### 3. 页面显示 404
+- 我们的应用是单页应用 (SPA)，Nginx 配置需要确保所有路由都指向 `index.html` (脚本已自动处理)。
+- 确保 `npm run build` 成功生成了 `dist` 目录。
 
-## 4. 常见问题
+---
 
-**Q: 阿里云拉取 Docker 镜像慢怎么办？**
-A: 可以配置阿里云镜像加速器。
-1. 登录阿里云容器镜像服务控制台，获取加速器地址。
-2. 编辑 `/etc/docker/daemon.json`：
-   ```json
-   {
-     "registry-mirrors": ["https://<您的ID>.mirror.aliyuncs.com"]
-   }
-   ```
-3. 重启 Docker：`sudo systemctl daemon-reload && sudo systemctl restart docker`
+## 维护命令
 
-**Q: 数据库数据存在哪里？**
-A: 默认配置下，数据存储在 Docker Volume `db_data` 中，即使删除容器，数据也会保留。
+- **更新代码**:
+  ```bash
+  git pull
+  npm install
+  npm run build
+  npm run build:server
+  pm2 restart taxmaster-api
+  ```
+
+- **查看日志**:
+  ```bash
+  pm2 logs
+  ```

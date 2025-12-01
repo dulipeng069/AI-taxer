@@ -16,11 +16,35 @@ export interface User {
   username: string;
   role: 'SUPER_ADMIN' | 'ENTERPRISE_ADMIN';
   companyName?: string;
+  companyCode?: string;
   status: string;
   createdAt: string;
+  phone?: string;
+  realName?: string;
+  subscription?: string;
+  validUntil?: string;
 }
 
 export const userService = {
+  // Submit Application (Public)
+  submitApplication: async (data: { companyName: string; realName: string; phone: string }) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json() as { error?: string };
+        throw new Error(error.error || 'Failed to submit application');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error submitting application:', error);
+      throw error;
+    }
+  },
+
   // Get all users (Super Admin)
   getUsers: async (): Promise<User[]> => {
     try {
@@ -54,7 +78,7 @@ export const userService = {
   },
 
   // Update user (Super Admin)
-  updateUser: async (id: string, userData: { companyName?: string; status?: string }) => {
+  updateUser: async (id: string, userData: { companyName?: string; status?: string; subscription?: string; validUntil?: string }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
         method: 'PUT',

@@ -12,6 +12,7 @@ interface PersonnelManagerProps {
 interface PersonSummary {
   name: string;
   idNumber: string;
+  employeeCode?: string;
   totalIncome: number;
   totalTax: number;
   count: number;
@@ -32,6 +33,7 @@ const PersonnelManager: React.FC<PersonnelManagerProps> = ({ data }) => {
       personnelMap.set(record.idNumber, {
         name: record.name,
         idNumber: record.idNumber,
+        employeeCode: record.employeeCode,
         totalIncome: 0,
         totalTax: 0,
         count: 0,
@@ -105,6 +107,7 @@ const PersonnelManager: React.FC<PersonnelManagerProps> = ({ data }) => {
     const exportData = personnelList.map(p => ({
       '姓名': p.name,
       '身份证号': p.idNumber,
+      '用户编码': p.employeeCode || '-',
       '累计收入': p.totalIncome,
       '累计个税': p.totalTax,
       '发放笔数': p.count,
@@ -204,10 +207,7 @@ const PersonnelManager: React.FC<PersonnelManagerProps> = ({ data }) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-           <h2 className="text-2xl font-bold text-gray-900">人员管理</h2>
-           <p className="text-gray-500 text-sm mt-1">人员收入概览与档案查询</p>
-        </div>
+
         <button 
            onClick={handleExportList}
            className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors"
@@ -284,6 +284,7 @@ const PersonnelManager: React.FC<PersonnelManagerProps> = ({ data }) => {
             <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200">
               <tr>
                 <th className="px-6 py-4">姓名</th>
+                <th className="px-6 py-4">用户编码</th>
                 <th className="px-6 py-4">身份证号</th>
                 <th className="px-6 py-4 text-right">历史累计收入</th>
                 <th className="px-6 py-4 text-right">历史累计个税</th>
@@ -303,6 +304,7 @@ const PersonnelManager: React.FC<PersonnelManagerProps> = ({ data }) => {
                       <span className="font-medium text-gray-900">{person.name}</span>
                     </div>
                   </td>
+                  <td className="px-6 py-4 text-sm font-mono text-gray-500">{person.employeeCode || '-'}</td>
                   <td className="px-6 py-4 font-mono text-gray-500">{person.idNumber}</td>
                   <td className="px-6 py-4 text-right font-medium text-gray-900">¥{person.totalIncome.toLocaleString()}</td>
                   <td className="px-6 py-4 text-right font-medium text-emerald-600">¥{person.totalTax.toLocaleString()}</td>
@@ -324,7 +326,7 @@ const PersonnelManager: React.FC<PersonnelManagerProps> = ({ data }) => {
               ))}
               {personnelList.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-20 text-center text-gray-400">
+                  <td colSpan={8} className="px-6 py-20 text-center text-gray-400">
                     <div className="flex flex-col items-center gap-2">
                       <User size={48} className="opacity-20" />
                       <p>未找到匹配的人员数据</p>

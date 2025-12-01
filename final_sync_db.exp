@@ -1,0 +1,30 @@
+#!/usr/bin/expect -f
+set timeout 60
+spawn ssh -o StrictHostKeyChecking=no root@8.136.46.241
+expect {
+    "password:" { send "TaxMaster2025!\r" }
+    "yes/no" { send "yes\r"; exp_continue }
+}
+expect "#"
+
+# 1. 同步数据库结构 (使用 db push 而不是 migrate deploy)
+send "echo '>>> Pushing database schema...'\r"
+send "cd /root/aitaxmaster\r"
+# --accept-data-loss 允许在 schema 变更导致数据丢失时继续 (因为我们重构了)
+send "npx prisma db push --accept-data-loss\r"
+expect "#"
+
+# 2. 重启 PM2
+send "echo '>>> Restarting PM2...'\r"
+send "pm2 restart all\r"
+expect "#"
+
+# 3. 验证 PM2 状态
+send "sleep 5\r"
+send "pm2 list\r"
+expect "#"
+
+send "echo '>>> Deployment Complete! Check http://8.136.46.241'\r"
+
+send "exit\r"
+expect eof

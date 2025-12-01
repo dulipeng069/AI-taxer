@@ -22,10 +22,13 @@ export const getPrisma = (cOrEnv: any): PrismaClient => {
 
   // 2. If D1 is found, use D1 Adapter
   if (d1) {
+    console.log("[Prisma] Using D1 Adapter");
     const adapter = new PrismaD1(d1)
     // Cast to any to avoid type issues if Client is generated without adapter support
     return new PrismaClient({ adapter } as any)
   }
+
+  console.log("[Prisma] Using Standard Connection");
 
   // 3. Fallback to Standard Prisma Client (Node.js / Alibaba Cloud RDS)
   // In Node.js, we reuse the global instance to prevent connection exhaustion

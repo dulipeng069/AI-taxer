@@ -1,0 +1,55 @@
+#!/bin/bash
+SERVER_IP="8.136.46.241"
+PASSWORD="TaxMaster2025!"
+
+cat > fix_final.exp <<EOF
+#!/usr/bin/expect -f
+set timeout 60
+spawn ssh -o StrictHostKeyChecking=no root@$SERVER_IP
+expect {
+    "password:" { send "$PASSWORD\r" }
+    "yes/no" { send "yes\r"; exp_continue }
+}
+expect "#"
+
+# 1. 停止并删除旧的 App 容器 (解决端口冲突和旧版本问题)
+send "echo '>>> Removing old app container...'\r"
+send "docker stop taxmaster-app-1\r"
+send "docker rm taxmaster-app-1\r"
+expect "#"
+
+# 2. 修复 MySQL 容器内的用户认证
+# 注意: 在 Docker 容器内，root 密码通常是环境变量设置的，这里假设是 TaxMaster2025!
+# 如果不是，我们需要检查 docker inspect
+send "echo '>>> Fixing MySQL auth inside container...'\r"
+send "docker exec taxmaster-db-1 mysql -u root -p'TaxMaster2025!' -e 'ALTER USER \"taxmaster\"@\"%\" IDENTIFIED WITH mysql_native_password BY \"TaxMaster2025!\"; FLUSH PRIVILEGES;'\r"
+expect "#"
+
+# 3. 运行迁移 (主机 -> 容器)
+# 确保 .env 指向 127.0.0.1 (已经在上一步修改过，但确认一下)
+send "echo '>>> Running migration...'\r"
+send "sed -i 's/localhost/127.0.0.1/g' /root/aitaxmaster/.env\r"
+send "cd /root/aitaxmaster\r"
+send "npx prisma migrate deploy\r"
+expect "#"
+
+# 4. 重启 PM2 (应该不再重启了)
+send "echo '>>> Restarting PM2...'\r"
+send "pm2 restart all\r"
+expect "#"
+
+# 5. 检查 PM2 状态 (等待几秒看是否重启)
+send "sleep 3\r"
+send "pm2 list\r"
+expect "#"
+
+# 6. 重启 Nginx 确保缓存清除
+send "systemctl restart nginx\r"
+expect "#"
+
+send "exit\r"
+expect eof
+EOF
+
+chmod +x fix_final.exp
+./fix_final.exp

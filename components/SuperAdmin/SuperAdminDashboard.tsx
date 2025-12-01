@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { LogOut, FileText, Menu, X, Bell, Users, Share2, Megaphone, ChevronDown, ChevronRight, Layers } from 'lucide-react';
+import { LogOut, FileText, Menu, X, Bell, Users, Share2, Megaphone, ChevronDown, ChevronRight, Layers, LayoutDashboard } from 'lucide-react';
 import { RawInput } from '../../types';
 import Dashboard from '../Dashboard';
 import DataAudit from './DataAudit';
 import UserManagement from './UserManagement';
 import MarketingMaterials from './ProductOperations/MarketingMaterials';
+import NotificationManager from './ProductOperations/NotificationManager';
+import SuperAdminWorkbench from './SuperAdminWorkbench';
 import { User } from '../../services/userService';
 
 interface SuperAdminDashboardProps {
@@ -20,13 +22,17 @@ interface MenuItem {
 }
 
 const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, allInputs }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'audit' | 'marketing'>('users');
-  const [viewingCompany, setViewingCompany] = useState<{ id: string, name: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<'workbench' | 'users' | 'audit' | 'marketing' | 'notifications'>('workbench');
+  const [viewingCompany, setViewingCompany] = useState<{ id: string, name: string, code?: string } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['operations']); // Default expand for visibility
 
   const handleViewData = (user: User) => {
-    setViewingCompany({ id: user.id, name: user.companyName || 'Unknown Company' });
+    setViewingCompany({ 
+      id: user.id, 
+      name: user.companyName || 'Unknown Company',
+      code: user.companyCode
+    });
   };
 
   // If viewing a specific company's data
@@ -38,7 +44,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
         <div className="fixed top-0 left-0 right-0 h-10 bg-slate-900 z-50 flex items-center justify-between px-4 text-xs text-white shadow-md">
            <div className="flex items-center gap-2">
              <span className="bg-yellow-500 text-black px-1.5 py-0.5 rounded font-bold">超管视图</span>
-             <span>正在查看企业：<strong className="text-yellow-400">{viewingCompany.name}</strong></span>
+             <span>正在查看企业：<strong className="text-yellow-400">{viewingCompany.name}</strong> {viewingCompany.code && <span className="opacity-75">({viewingCompany.code})</span>}</span>
            </div>
            <button 
              onClick={() => setViewingCompany(null)}
@@ -51,6 +57,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
            <Dashboard 
              onLogout={() => {}} 
              companyId={viewingCompany.id}
+             companyName={viewingCompany.name}
+             companyCode={viewingCompany.code}
              userRole="super_admin"
              readOnly={true} 
            />
@@ -60,6 +68,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
   }
 
   const menuItems: MenuItem[] = [
+    { id: 'workbench', label: '工作台', icon: LayoutDashboard },
     { id: 'users', label: '账号管理', icon: Users },
     { id: 'audit', label: '数据审计', icon: FileText },
     { 
@@ -67,7 +76,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
       label: '产品运营', 
       icon: Layers,
       children: [
-        { id: 'marketing', label: '宣传物料', icon: Megaphone }
+        { id: 'marketing', label: '宣传物料', icon: Megaphone },
+        { id: 'notifications', label: '消息通知', icon: Bell }
       ]
     },
   ];
@@ -200,9 +210,10 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
                <Menu size={24} />
              </button>
              <h2 className="text-xl font-bold text-slate-800">
-               {activeTab === 'users' ? '企业账号管理' : 
+               {activeTab === 'workbench' ? '工作台' :
+                activeTab === 'users' ? '企业账号管理' : 
                 activeTab === 'audit' ? '数据审计中心' : 
-                activeTab === 'marketing' ? '产品运营中心' : 'Dashboard'}
+                (activeTab === 'marketing' || activeTab === 'notifications') ? '产品运营中心' : 'Dashboard'}
              </h2>
           </div>
           <div className="flex items-center gap-4">
@@ -214,12 +225,16 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onLogout, all
         </header>
 
         <div className="p-8 max-w-7xl mx-auto">
-          {activeTab === 'users' ? (
+          {activeTab === 'workbench' ? (
+            <SuperAdminWorkbench onNavigate={(tab) => setActiveTab(tab as any)} />
+          ) : activeTab === 'users' ? (
             <UserManagement onViewData={handleViewData} />
           ) : activeTab === 'marketing' ? (
             <MarketingMaterials />
+          ) : activeTab === 'notifications' ? (
+            <NotificationManager />
           ) : (
-            <DataAudit onViewData={(id) => setViewingCompany({ id, name: '企业数据' })} />
+            <DataAudit onViewData={(id, name) => setViewingCompany({ id, name: name || '企业数据' })} />
           )}
         </div>
       </main>

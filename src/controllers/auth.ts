@@ -18,6 +18,22 @@ app.post('/login', async (c) => {
       return c.json({ error: 'Invalid credentials' }, 401)
     }
 
+    // Check if user is active
+    if (user.status !== 'ACTIVE') {
+       return c.json({ error: '请联系管理员配置使用权限' }, 403)
+    }
+
+    // Check for expiration
+    // @ts-ignore: IDE cache issue
+    if (user.validUntil && new Date(user.validUntil) < new Date()) {
+      // Optionally update status to DISABLED or just block
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { status: 'DISABLED' }
+      })
+      return c.json({ error: '请联系管理员配置使用权限' }, 403)
+    }
+
     // Update last login or audit log here if needed
 
     return c.json({
@@ -27,7 +43,12 @@ app.post('/login', async (c) => {
         username: user.username,
         role: user.role,
         companyName: user.companyName,
-        permissions: user.permissions
+        companyCode: user.companyCode,
+        permissions: user.permissions,
+        // @ts-ignore: IDE cache issue
+        validUntil: user.validUntil,
+        // @ts-ignore: IDE cache issue
+        subscription: user.subscription
       }
     })
   } catch (e: any) {
@@ -46,11 +67,15 @@ app.post('/register', async (c) => {
     const prisma = getPrisma(c)
     const hashedPassword = bcrypt.hashSync(password, 10)
 
+    // Generate Enterprise Code: ENT- + 6 random digits
+    const companyCode = `ENT-${Math.floor(100000 + Math.random() * 900000)}`;
+
     const user = await prisma.user.create({
       data: {
         username,
         passwordHash: hashedPassword,
         companyName,
+        companyCode,
         role: 'ENTERPRISE_ADMIN',
         status: 'ACTIVE'
       }
@@ -61,7 +86,8 @@ app.post('/register', async (c) => {
       data: {
         id: user.id,
         username: user.username,
-        companyName: user.companyName
+        companyName: user.companyName,
+        companyCode: user.companyCode
       }
     })
   } catch (e: any) {
@@ -80,7 +106,7 @@ app.post('/change-password', async (c) => {
       return c.json({ error: 'Username, old password and new password are required' }, 400)
     }
 
-    const prisma = getPrisma(c.env.DB)
+    const prisma = getPrisma(c)
     const user = await prisma.user.findUnique({
       where: { username }
     })

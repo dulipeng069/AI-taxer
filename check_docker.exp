@@ -1,0 +1,15 @@
+#!/usr/bin/expect -f
+set timeout 20
+spawn ssh -o StrictHostKeyChecking=no root@8.136.46.241
+expect {
+    "password:" { send "TaxMaster2025!\r" }
+    "yes/no" { send "yes\r"; exp_continue }
+}
+expect "#"
+
+send "echo '>>> Docker Containers...'\r"
+send "docker ps\r"
+expect "#"
+
+send "exit\r"
+expect eof

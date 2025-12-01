@@ -1,0 +1,36 @@
+#!/usr/bin/expect -f
+set timeout 60
+spawn ssh -o StrictHostKeyChecking=no root@8.136.46.241
+expect {
+    "password:" { send "TaxMaster2025!\r" }
+    "yes/no" { send "yes\r"; exp_continue }
+}
+expect "#"
+
+# 1. 安装 mysql-client
+send "echo '>>> Installing mysql-client...'\r"
+send "apt-get update && apt-get install -y mysql-client\r"
+expect "#"
+
+# 2. 修复 MySQL 用户认证 (使用单引号包裹命令以避免 ! 被 bash 解析)
+# 注意: SQL 中字符串使用双引号 "TaxMaster2025!"
+send "echo '>>> Fixing MySQL auth...'\r"
+send "mysql -u root -e 'ALTER USER \"taxmaster\"@\"localhost\" IDENTIFIED WITH mysql_native_password BY \"TaxMaster2025!\"; FLUSH PRIVILEGES;'\r"
+expect "#"
+
+# 3. 验证
+send "mysql -u root -e 'SELECT user, host, plugin FROM mysql.user WHERE user=\"taxmaster\";'\r"
+expect "#"
+
+# 4. 运行迁移
+send "echo '>>> Running migration...'\r"
+send "cd /root/aitaxmaster\r"
+send "npx prisma migrate deploy\r"
+expect "#"
+
+# 5. 重启服务
+send "pm2 restart all\r"
+expect "#"
+
+send "exit\r"
+expect eof

@@ -95,10 +95,7 @@ const Reports: React.FC<ReportsProps> = ({ data }) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-           <h2 className="text-2xl font-bold text-gray-900">申报报表</h2>
-           <p className="text-gray-500 text-sm mt-1">按月度汇总个税申报数据</p>
-        </div>
+
         
         <div className="flex items-center gap-4">
            <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-2">

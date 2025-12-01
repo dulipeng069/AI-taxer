@@ -53,10 +53,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, readOnly }) => 
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">系统设置</h2>
-        <p className="text-gray-500 text-sm mt-1">配置企业基础信息与个人账号档案</p>
-      </div>
+
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
          
@@ -97,14 +94,30 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, readOnly }) => 
                         <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                             <Building2 size={18} className="text-brand-600" /> 企业名称
                         </label>
-                        <input 
-                            type="text" 
-                            disabled={readOnly}
-                            className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all placeholder-gray-400 ${readOnly ? 'bg-gray-50 text-gray-500' : ''}`}
-                            value={settings.companyName}
-                            onChange={e => handleChange('companyName', e.target.value)}
-                            placeholder="输入企业全称，如：北京星河文化传媒有限公司"
-                        />
+                        <div className="flex gap-4">
+                            <div className="flex-1">
+                                <input 
+                                    type="text" 
+                                    disabled={readOnly}
+                                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all placeholder-gray-400 ${readOnly ? 'bg-gray-50 text-gray-500' : ''}`}
+                                    value={settings.companyName}
+                                    onChange={e => handleChange('companyName', e.target.value)}
+                                    placeholder="输入企业全称，如：北京星河文化传媒有限公司"
+                                />
+                            </div>
+                            <div className="w-48">
+                                <div className="relative">
+                                    <input 
+                                        type="text" 
+                                        disabled={true}
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 font-mono text-sm"
+                                        value={settings.companyCode || 'ENT-PENDING'}
+                                        placeholder="企业编码"
+                                    />
+                                    <span className="absolute -top-2 left-3 bg-gray-50 px-1 text-xs text-gray-400">企业编码</span>
+                                </div>
+                            </div>
+                        </div>
                         <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
                            <span className="w-1 h-1 rounded-full bg-gray-400"></span>
                            该名称将显示在系统顶栏及导出报表的表头中

@@ -1,0 +1,32 @@
+#!/usr/bin/expect -f
+set timeout 30
+spawn ssh -o StrictHostKeyChecking=no root@8.136.46.241
+expect {
+    "password:" { send "TaxMaster2025!\r" }
+    "yes/no" { send "yes\r"; exp_continue }
+}
+expect "#"
+
+# 1. 尝试直接登录 MySQL 并修改用户
+send "mysql -u root -e \"ALTER USER 'taxmaster'@'localhost' IDENTIFIED WITH mysql_native_password BY 'TaxMaster2025!'; FLUSH PRIVILEGES;\"\r"
+expect "#"
+
+# 2. 尝试修改任意 host 的用户 (如果存在)
+send "mysql -u root -e \"ALTER USER 'taxmaster'@'%' IDENTIFIED WITH mysql_native_password BY 'TaxMaster2025!'; FLUSH PRIVILEGES;\"\r"
+expect "#"
+
+# 3. 验证修改结果
+send "mysql -u root -e \"SELECT user, host, plugin FROM mysql.user WHERE user='taxmaster';\"\r"
+expect "#"
+
+# 4. 重新运行迁移
+send "cd /root/aitaxmaster\r"
+send "npx prisma migrate deploy\r"
+expect "#"
+
+# 5. 重启 PM2
+send "pm2 restart all\r"
+expect "#"
+
+send "exit\r"
+expect eof

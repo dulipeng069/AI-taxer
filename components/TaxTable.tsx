@@ -17,6 +17,7 @@ interface TaxTableProps {
 const TaxTable: React.FC<TaxTableProps> = ({ inputs, companyId, onDataChange, calculatedData, readOnly = false }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [calculationMode, setCalculationMode] = useState<'pre_tax' | 'post_tax'>('pre_tax');
 
   // Directly use calculatedData for display and stats
   const displayData = calculatedData;
@@ -61,7 +62,12 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, companyId, onDataChange, ca
 
     // Generate Batch ID: YYYYMMDD-HHmmss
     const now = new Date();
-    const batchId = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+    const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+    
+    // Use filename in BatchID for better tracking (sanitize to avoid special char issues)
+    // Replace non-alphanumeric (except dots, dashes, underscores, and Chinese) with underscores
+    const safeFileName = file.name.replace(/[^\w\.\-\u4e00-\u9fa5]/g, '_');
+    const batchId = `${timestamp}_${safeFileName}`;
 
     const reader = new FileReader();
     reader.onload = async (evt) => {
@@ -149,7 +155,8 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, companyId, onDataChange, ca
             name: String(name).trim(),
             idNumber: String(idNumber).trim(),
             income: cleanIncome,
-            batchId: batchId // Assign Batch ID
+            batchId: batchId, // Assign Batch ID
+            isPostTax: calculationMode === 'post_tax'
           });
         });
 
@@ -179,8 +186,11 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, companyId, onDataChange, ca
             
             alert(`成功上传批次 [${batchId}]，共 ${newRecords.length} 条数据！${skippedCount > 0 ? `(跳过 ${skippedCount} 条无效数据)` : ''}`);
             
-            // Refresh Data
-            onDataChange();
+            // Refresh Data with a small delay to ensure D1 consistency
+            console.log("Upload successful, refreshing data in 500ms...");
+            setTimeout(() => {
+              onDataChange();
+            }, 500);
         } else {
           alert('未识别到有效数据。请确保Excel包含：姓名、身份证号、收入金额、支付日期');
         }
@@ -265,11 +275,7 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, companyId, onDataChange, ca
         className="hidden" 
       />
 
-      {/* Header Info */}
-      <div className="flex-none">
-        <h2 className="text-2xl font-bold text-gray-900">个税智算中心</h2>
-        <p className="text-gray-500 text-sm mt-1">数据批量导入与实时计算</p>
-      </div>
+
 
        {/* Unified Dashboard Card */}
        <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col overflow-hidden">
@@ -325,6 +331,23 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, companyId, onDataChange, ca
               {/* Action Buttons - Now on same row/wrap */}
               <div className="flex items-center gap-3 ml-auto lg:ml-0">
                   {!readOnly && (
+                    <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg mr-2">
+                        <button 
+                           onClick={() => setCalculationMode('pre_tax')}
+                           className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${calculationMode === 'pre_tax' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                           税前推税后 (标准)
+                        </button>
+                        <button 
+                           onClick={() => setCalculationMode('post_tax')}
+                           className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${calculationMode === 'post_tax' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                           税后反推税前
+                        </button>
+                    </div>
+                  )}
+
+                  {!readOnly && (
                     <button 
                       onClick={handleReset} 
                       className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-red-50 hover:text-red-600 border border-gray-200 hover:border-red-200 rounded-lg transition-all"
@@ -372,6 +395,7 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, companyId, onDataChange, ca
                   <th className="px-4 py-3 border-b bg-gray-50">支付日期</th>
                   <th className="px-4 py-3 border-b bg-gray-50">姓名</th>
                   <th className="px-4 py-3 border-b bg-gray-50">身份证号</th>
+                  <th className="px-4 py-3 border-b bg-gray-50">用户编码</th>
                   <th className="px-4 py-3 border-b bg-gray-50 text-right">收入金额</th>
                   <th className="px-4 py-3 border-b bg-blue-50/80 text-brand-900">支付月份</th>
                   <th className="px-4 py-3 border-b bg-blue-50/80 text-brand-900 text-center">连续月份</th>
@@ -390,6 +414,7 @@ const TaxTable: React.FC<TaxTableProps> = ({ inputs, companyId, onDataChange, ca
                      <td className="px-4 py-2">{row.date}</td>
                      <td className="px-4 py-2 font-medium">{row.name}</td>
                      <td className="px-4 py-2 text-xs text-gray-500 font-mono">{row.idNumber}</td>
+                     <td className="px-4 py-2 text-xs text-gray-500 font-mono">{row.employeeCode || '-'}</td>
                      <td className="px-4 py-2 text-right">{row.income.toLocaleString()}</td>
                      <td className="px-4 py-2 bg-blue-50/20 text-gray-500 text-xs">{row.paymentMonth}</td>
                      <td className="px-4 py-2 bg-blue-50/20 text-center text-xs">

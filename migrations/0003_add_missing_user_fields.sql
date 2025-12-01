@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "realName" TEXT;
+ALTER TABLE "User" ADD COLUMN "phone" TEXT;
+ALTER TABLE "User" ADD COLUMN "subscription" TEXT DEFAULT 'FREE';
+ALTER TABLE "User" ADD COLUMN "validUntil" DATETIME;

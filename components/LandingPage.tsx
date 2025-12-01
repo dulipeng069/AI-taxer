@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CheckCircle2, ArrowRight, ShieldCheck, Zap, BarChart3, Building2, Calculator, Layers, FileCheck, FileText } from 'lucide-react';
+import ApplicationModal from './ApplicationModal';
 
 interface LandingPageProps {
   onLogin: () => void;
@@ -7,8 +8,14 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToPolicy }) => {
+  const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-white font-sans selection:bg-blue-100 selection:text-blue-900">
+      <ApplicationModal 
+        isOpen={isApplicationModalOpen} 
+        onClose={() => setIsApplicationModalOpen(false)} 
+      />
       
       {/* Navbar - Glassmorphism Light */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 transition-all">
@@ -79,10 +86,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToPolicy }
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-24">
             <button 
-              onClick={onLogin}
+              onClick={() => setIsApplicationModalOpen(true)}
               className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-lg shadow-xl shadow-blue-200 hover:shadow-blue-300 transition-all duration-200 flex items-center justify-center gap-2 group"
             >
-              立即开启智算 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform"/>
+              申请使用 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform"/>
             </button>
             <button 
               onClick={onNavigateToPolicy}
@@ -485,10 +492,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToPolicy }
               <br/>即刻体验符合 2025 新规的智能个税引擎。
             </p>
             <button 
-              onClick={onLogin}
+              onClick={() => setIsApplicationModalOpen(true)}
               className="px-12 py-5 bg-white text-blue-600 rounded-full font-bold text-lg hover:bg-blue-50 transition-all shadow-2xl shadow-blue-900/20 hover:scale-105"
             >
-              免费登录试用
+              申请使用
             </button>
             <p className="mt-8 text-sm text-blue-200/80">
                支持 .xlsx / .xls 格式导入 • 数据本地加密处理

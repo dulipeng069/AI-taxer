@@ -8,6 +8,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // ==========================================
@@ -27,9 +28,16 @@ model User {
   
   // Enterprise Profile
   companyName   String?
+  companyCode   String? @unique // Generated Enterprise Code
   contactPerson String?
   contactPhone  String?
   avatarUrl     String?
+
+  // Application Fields
+  realName      String?
+  phone         String?
+  subscription  String?       @default("FREE") // 'FREE', 'PAID'
+  validUntil    DateTime?
   
   // Permissions (Stored as String in SQLite, parsed as JSON in app)
   permissions   String?       @default("[]") 
@@ -39,6 +47,7 @@ model User {
   taxRecords    TaxRecord[]
   uploadBatches UploadBatch[]
   auditLogs     AuditLog[]
+  notifications Notification[]
 
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -56,6 +65,7 @@ model Employee {
   
   name        String
   idNumber    String
+  code        String? // Generated User ID Code
   phone       String?
   department  String?
 
@@ -127,4 +137,17 @@ model AuditLog {
   createdAt   DateTime @default(now())
 
   user        User     @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String?  // Null means global/system broadcast to all enterprises
+  type        String   @default("SYSTEM") // 'SYSTEM', 'ALERT', 'UPDATE'
+  title       String
+  content     String   // Can be HTML or Markdown
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  // Relation to specific user if not global
+  user        User?    @relation(fields: [userId], references: [id])
 }
